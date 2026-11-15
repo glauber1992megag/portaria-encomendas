@@ -3,671 +3,1318 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Portaria IA - APK Nativo</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <title>Portaria Inteligente Pro</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    corpo { fundo: #0f172a; cor: #f8fafc; preenchimento-inferior: 85px; }
-    cabeçalho { fundo: #1e293b; preenchimento: 14px 16px; borda inferior: 1px sólida #334155; exibição: flexível; justificar conteúdo: espaço entre; alinhar itens: centro; }
-    cabeçalho h1 { tamanho da fonte: 18px; cor: #38bdf8; }
-    .btn-topo { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; }
-    main { padding: 14px; max-width: 600px; margin: 0 auto; }
-    .tela { display: none; }
-    .tela.ativa { display: bloco; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
-    .card h2 { tamanho da fonte: 15px; cor: #93c5fd; margem inferior: 10px; }
-    .btn-acao { width: 100%; background: #2563eb; color: white; padding: 15px; border: none; border-radius: 10px; text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; display: block; cursor: pointer; }
-    .btn-galeria { position: relative; width: 100%; background: #334155; color: #e2e8f0; padding: 13px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 12px; display: block; overflow: hidden; }
-    .btn-galeria input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
-    rótulo { exibição: bloco; tamanho da fonte: 12px; cor: #94a3b8; margem inferior: 4px; margem superior: 10px; }
-    input[type="text"], input[type="tel"] { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 14px; }
-    .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 12px; cursor: pointer; }
-    .btn-verde { fundo: #10b981; cor: #022c22; }
-    .btn-azul { fundo: #3b82f6; cor: branca; }
-    .btn-cinza { fundo: #334155; cor: #e2e8f0; }
-    .btn-vermelho { background: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 6px; font-size: 11px; margin-top: 6px; }
-    .item { background: #0f172a; border: 1px solid #334155; padding: 12px; border-radius: 10px; margin-top: 10px; }
-    .foto-perfil { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
-    .flex-row { display: flex; gap: 12px; align-items: center; }
-    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 12px 0; z-index: 999; }
-    .nav button { background: none; border: none; color: #94a3b8; font-size: 13px; font-weight: bold; padding: 6px 12px; }
-    .botão de navegação.ativo { cor: #38bdf8; }
-    #aviso-ia { display: none; background: #1e3a8a; color: #bfdbfe; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; text-align: center; }
-    #match-box { display: none; background: #064e3b; border: 1px solid #10b981; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
-    #texto-lido-box { display: none; background: #020617; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 8px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
-    #visor-camera-box { display: none; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 12px; border: 2px solid #38bdf8; }
-    #video-camera { width: 100%; max-height: 280px; display: block; background: #000; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: #0b1120;
+      color: #f8fafc;
+      padding-bottom: 85px;
+    }
+
+    header {
+      background-color: #1e293b;
+      padding: 16px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    header h1 {
+      font-size: 18px;
+      color: #38bdf8;
+    }
+
+    header small {
+      display: block;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .btn-header {
+      background-color: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    main {
+      padding: 14px;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    .aba {
+      display: none;
+    }
+
+    .aba.ativa {
+      display: block;
+    }
+
+    .card {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      font-size: 15px;
+      color: #93c5fd;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+    }
+
+    .grid-captura {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .btn-captura {
+      position: relative;
+      background-color: #2563eb;
+      color: #ffffff;
+      padding: 14px 10px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 13px;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .btn-captura.galeria {
+      background-color: #0f766e;
+    }
+
+    .btn-captura input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #visor-camera-box {
+      display: none;
+      background-color: #020617;
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    #video-lens {
+      width: 100%;
+      max-height: 260px;
+      border-radius: 8px;
+      background-color: #000000;
+      object-fit: cover;
+    }
+
+    .lens-guia {
+      font-size: 12px;
+      color: #38bdf8;
+      margin: 6px 0;
+    }
+
+    #status-ocr {
+      display: none;
+      background-color: #172554;
+      border: 1px solid #3b82f6;
+      color: #bfdbfe;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    #card-match {
+      display: none;
+      background-color: #064e3b;
+      border: 1px solid #10b981;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .flex-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #38bdf8;
+      background-color: #0f172a;
+    }
+
+    .campo-item {
+      margin-bottom: 10px;
+    }
+
+    .campo-topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    label {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    input[type="text"], input[type="tel"], select {
+      width: 100%;
+      padding: 11px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-size: 14px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 9px;
+      font-weight: bold;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    .btn-verde {
+      background-color: #10b981;
+      color: #022c22;
+    }
+
+    .btn-azul {
+      background-color: #3b82f6;
+      color: #ffffff;
+    }
+
+    .btn-cinza {
+      background-color: #334155;
+      color: #e2e8f0;
+    }
+
+    .btn-pequeno {
+      padding: 5px 9px;
+      font-size: 11px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+    }
+
+    .btn-perigo {
+      background-color: #ef4444;
+      color: #ffffff;
+    }
+
+    .btn-editar {
+      background-color: #f59e0b;
+      color: #000000;
+    }
+
+    .btn-saida {
+      background-color: #38bdf8;
+      color: #082f49;
+    }
+
+    .registro-box {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .badge-pendente {
+      background-color: #78350f;
+      color: #fde68a;
+    }
+
+    .badge-retirado {
+      background-color: #064e3b;
+      color: #6ee7b7;
+    }
+
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: #1e293b;
+      border-top: 1px solid #334155;
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      z-index: 60;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 4px 8px;
+    }
+
+    .nav-btn.ativo {
+      color: #38bdf8;
+    }
+
+    #texto-bruto-area {
+      display: none;
+      background-color: #020617;
+      color: #94a3b8;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 8px;
+      border-radius: 8px;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    /* Area oculta formatada para gerar o PDF limpo */
+    #area-impressao-pdf {
+      display: none;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #area-impressao-pdf, #area-impressao-pdf * {
+        visibility: visible;
+      }
+      #area-impressao-pdf {
+        display: block;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: #ffffff;
+        color: #000000;
+        padding: 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th, td {
+        border: 1px solid #000000;
+        padding: 6px;
+        font-size: 11px;
+        text-align: left;
+      }
+    }
   </style>
 </head>
 <body>
 
-<cabeçalho>
-  <h1>Portaria IA</h1>
-  <button type="button" class="btn-topo" id="btn-topo-morador">+ Morador</button>
+<header>
+  <div>
+    <h1>Portaria Inteligente</h1>
+    <small id="data-topo">Controle de Encomendas</small>
+  </div>
+  <button type="button" class="btn-header" id="btn-topo-morador">+ Morador</button>
 </header>
 
 <main>
-  <!-- ABA 1: RECEBER -->
-  <div id="aba-inicio" class="tela ativa">
+  <!-- ABA 1: CONTROLE DE ENCOMENDAS E LENS -->
+  <section id="aba-encomendas" class="aba ativa">
     <div class="card">
-      <button type="button" class="btn-acao" id="btn-abrir-camera">Tirar Foto da Etiqueta (Câmera)</button>
+      <h2>1. Coleta Inteligente (Modo Lens)</h2>
 
-      <div id="visor-camera-box">
-        <video id="video-camera" autoplay playsinline muted></video>
-        <div style="display:flex; gap:8px; padding:10px; background:#1e293b;">
-          <button type="button" class="btn btn-verde" style="margin-top:0;" id="btn-capturar-frame">Capturar e Ler</button>
-          <button type="button" class="btn btn-vermelho" style="margin-top:0; width:auto; padding:0 16px;" id="btn-fechar-camera">Fechar</button>
+      <div class="grid-captura">
+        <button type="button" class="btn-captura" id="btn-abrir-camera">
+          <span>Camera Real</span>
+          <small style="font-weight:normal;font-size:11px;">Ler ao vivo</small>
+        </button>
+
+        <div class="btn-captura galeria">
+          <span>Foto da Galeria</span>
+          <small style="font-weight:normal;font-size:11px;">Escolher imagem</small>
+          <input type="file" id="input-galeria" accept="image/*">
         </div>
       </div>
 
-      <div class="btn-galeria">
-        Escolher Foto da Galeria
-        <input type="file" accept="image/*" id="input-galeria">
+      <div id="visor-camera-box">
+        <video id="video-lens" autoplay playsinline muted></video>
+        <div class="lens-guia">Aponte a camera para a etiqueta e toque em Capturar</div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-verde" id="btn-capturar-frame" style="margin-top:0;">Capturar e Ler Texto</button>
+          <button type="button" class="btn btn-cinza" id="btn-fechar-camera" style="margin-top:0; width:40%;">Fechar</button>
+        </div>
+        <canvas id="canvas-lens" style="display:none;"></canvas>
       </div>
 
-      <div id="aviso-ia">Lendo etiqueta...</div>
+      <div id="status-ocr">Processando imagem...</div>
 
-      <div id="match-box">
+      <div id="card-match">
         <div class="flex-row">
-          <img id="match-foto" class="foto-perfil" src="" alt="Foto">
+          <img id="match-avatar" class="avatar" src="" alt="Morador">
           <div>
-            <strong id="match-titulo" style="color: #6ee7b7; font-size: 14px;">Morador Encontrado!</strong>
-            <div id="match-desc" style="font-size: 12px; color: #d1fae5;"></div>
+            <strong id="match-unidade" style="color:#6ee7b7;font-size:14px;">Unidade Identificada</strong>
+            <div id="match-pessoa" style="font-size:13px;color:#ecfdf5;"></div>
           </div>
         </div>
       </div>
 
-      <h2>Dados Coletados (Corrija para a IA Aprender)</h2>
-      <div id="formulario-dinamico"></div>
+      <h2>2. Formulario da Encomenda (Editavel)</h2>
+      <div id="container-campos-form"></div>
 
-      <button type="button" class="btn btn-cinza" id="btn-ir-campos">+ Adicionar Novo Campo de Coleta</button>
-      <button type="button" class="btn btn-verde" id="btn-salvar-encomenda">Salvar Encomenda & Ensinar IA</button>
+      <button type="button" class="btn btn-cinza" id="btn-novo-campo-rapido">+ Adicionar Novo Campo ao Formulario</button>
+      <button type="button" class="btn btn-verde" id="btn-salvar-encomenda">Salvar Encomenda & Atualizar Backup PDF</button>
 
-      <button type="button" class="btn btn-cinza" style="font-size: 12px; padding: 8px;" id="btn-ver-texto">Ver Texto Lido pela Camera</button>
-      <div id="texto-lido-box"></div>
+      <button type="button" class="btn btn-cinza" id="btn-ver-bruto" style="font-size:12px; padding:8px;">Ver Texto Extraido da Imagem</button>
+      <div id="texto-bruto-area"></div>
     </div>
 
     <div class="card">
-      <h2>Encomendas de Hoje</h2>
-      <div id="lista-encomendas"></div>
+      <h2>3. Controle de Entrada e Saida (<span id="contagem-dia">0</span>)</h2>
+      <div id="lista-registros-dia"></div>
     </div>
-  </div>
+  </section>
 
-  <!-- ABA 2: MORADORES -->
-  <div id="aba-moradores" class="tela">
+  <!-- ABA 2: MORADORES E FAMILIARES -->
+  <section id="aba-moradores" class="aba">
     <div class="card">
-      <h2>Cadastro Morador & Família</h2>
-      <p style="font-size: 12px; color: #94a3b8;">A IA cruza qualquer nome cadastrado aqui com o texto das etiquetas.</p>
+      <h2 id="titulo-form-morador">Cadastrar Morador & Familiares</h2>
+      <input type="hidden" id="edit-morador-index" value="-1">
 
-      <label>Apartamento / Bloco</label>
-      <input type="text" id="cad-apto" placeholder="Ex: Apto 503">
-
-      <label>Nome do Titular</label>
-      <input type="text" id="cad-nome" placeholder="Nome completo">
-
-      <label>WhatsApp (com DDD)</label>
-      <input type="tel" id="cad-whats" placeholder="Ex: 71999999999">
-
-      <label>Foto do Titular</label>
-      <input type="file" accept="image/*" id="input-foto-titular">
-      <img id="prev-titular" style="display:none; width:60px; height:60px; border-radius:8px; margin-top:6px; object-fit:cover;">
-
-      <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 10px;">
-        <strong style="font-size: 13px; color: #38bdf8;">Familiares / Moradores do Mesmo Apto</strong>
-        <div id="box-familiares"></div>
-        <button type="button" class="btn btn-cinza" id="btn-add-familiar">+ Adicionar Pessoa / Familiar</button>
+      <div class="campo-item">
+        <label>Apartamento / Bloco / Casa</label>
+        <input type="text" id="mor-unidade" placeholder="Ex: Bloco A - Apto 503">
       </div>
 
-      <button type="button" class="btn btn-azul" id="btn-salvar-morador">Salvar Cadastro</button>
+      <div class="campo-item">
+        <label>Nome do Morador Titular</label>
+        <input type="text" id="mor-titular" placeholder="Nome completo">
+      </div>
+
+      <div class="campo-item">
+        <label>Telefone / WhatsApp</label>
+        <input type="tel" id="mor-telefone" placeholder="Ex: 71999999999">
+      </div>
+
+      <div class="campo-item">
+        <label>Foto do Titular</label>
+        <input type="file" id="mor-foto-input" accept="image/*">
+        <img id="mor-foto-preview" class="avatar" style="display:none; margin-top:8px;" src="" alt="Preview">
+      </div>
+
+      <div style="border-top: 1px solid #334155; margin-top: 14px; padding-top: 12px;">
+        <strong style="font-size: 13px; color: #38bdf8;">Familiares / Outros Moradores da Unidade</strong>
+        <div id="container-familiares-form"></div>
+        <button type="button" class="btn btn-cinza" id="btn-add-familiar">+ Adicionar Familiar / Morador</button>
+      </div>
+
+      <button type="button" class="btn btn-azul" id="btn-salvar-morador">Salvar Cadastro de Morador</button>
+      <button type="button" class="btn btn-cinza" id="btn-cancelar-edicao-morador" style="display:none;">Cancelar Edicao</button>
     </div>
 
     <div class="card">
-      <h2>Base de Moradores (Memória da IA)</h2>
-      <div id="lista-moradores"></div>
+      <h2>Moradores Cadastrados (Base da IA)</h2>
+      <div id="lista-moradores-cadastrados"></div>
     </div>
-  </div>
+  </section>
 
-  <!-- ABA 3: CAMPOS E IA -->
-  <div id="aba-campos" class="tela">
+  <!-- ABA 3: TREINAR IA E CAMPOS -->
+  <section id="aba-ia" class="aba">
     <div class="card">
-      <h2>Adicionar Campo para IA Coletar</h2>
-      <p style="font-size: 12px; color: #94a3b8;">Crie campos extras (ex: Nota Fiscal, Loja, Peso) e defina uma palavra-chave que aparece antes do dado na etiqueta.</p>
+      <h2>Gerenciar Campos do Formulario</h2>
+      <p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Adicione ou exclua campos. Informe a palavra-chave que aparece na etiqueta para a IA preencher sozinha.</p>
 
-      <label>Nome do Campo</label>
-      <input type="text" id="novo-campo-titulo" placeholder="Ex: Nota Fiscal">
+      <div class="campo-item">
+        <label>Nome do Campo</label>
+        <input type="text" id="cfg-campo-nome" placeholder="Ex: Codigo Rastreio ou Nota Fiscal">
+      </div>
 
-      <label>Palavra-Chave na Etiqueta (Gatilho)</label>
-      <input type="text" id="novo-campo-chave" placeholder="Ex: NF: ou Pedido:">
+      <div class="campo-item">
+        <label>Palavra-chave na Etiqueta (Gatilho para IA)</label>
+        <input type="text" id="cfg-campo-gatilho" placeholder="Ex: Rastreio: ou NF:">
+      </div>
 
-      <button type="button" class="btn btn-azul" id="btn-add-campo">Adicionar Campo ao Formulário</button>
-      <div id="lista-campos-config"></div>
+      <button type="button" class="btn btn-azul" id="btn-criar-campo">Adicionar Campo</button>
+      <div id="lista-campos-gerenciar"></div>
     </div>
 
     <div class="card">
-      <h2>Memória Aprendida pela IA</h2>
-      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Palavras-chave que a IA já aprendeu:</p>
-      <div id="lista-memoria-ia"></div>
+      <h2>Aprendizado da IA Interna</h2>
+      <p style="font-size:12px; color:#94a3b8; margin-bottom:8px;">A IA aprende automaticamente quando voce corrige dados antes de salvar. Regras memorizadas:</p>
+      <div id="lista-regras-ia"></div>
     </div>
-  </div>
+  </section>
+
+  <!-- ABA 4: PASTA BACKUP DADOS PDF -->
+  <section id="aba-backup" class="aba">
+    <div class="card">
+      <h2>Pasta: backup dados PDF</h2>
+      <p style="font-size:12px; color:#94a3b8; margin-bottom:12px;">
+        Backup automatico a cada alteracao. Cada dia gera um arquivo separado sem apagar os dias anteriores.
+      </p>
+      <div id="lista-arquivos-pdf"></div>
+    </div>
+  </section>
 </main>
 
-<nav class="nav">
-  <button type="button" id="btn-nav-inicio" class="ativo">Receber</button>
-  <button type="button" id="btn-nav-moradores">Moradores</button>
-  <button type="button" id="btn-nav-campos">Campos e IA</button>
+<!-- Area utilizada para exportacao PDF limpa -->
+<div id="area-impressao-pdf"></div>
+
+<nav class="nav-bar">
+  <button type="button" class="nav-btn ativo" data-aba="encomendas">Encomendas</button>
+  <button type="button" class="nav-btn" data-aba="moradores">Moradores</button>
+  <button type="button" class="nav-btn" data-aba="ia">IA & Campos</button>
+  <button type="button" class="nav-btn" data-aba="backup">Backup PDF</button>
 </nav>
 
-<script src="cordova.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-(function() {
-  var camposBase = JSON.parse(localStorage.getItem('pia_campos') || '[{"id":"nome","titulo":"Nome do Morador","chave":"DESTINAT"},{"id":"apto","titulo":"Apartamento / Bloco","chave":"APTO"},{"id":"transp","titulo":"Transportadora","chave":""}]');
-  var moradores = JSON.parse(localStorage.getItem('pia_moradores') || '[]');
-  var encomendas = JSON.parse(localStorage.getItem('pia_encomendas') || '[]');
-  var memoriaIA = JSON.parse(localStorage.getItem('pia_memoria') || '[{"chave":"MAGALU","campo":"transp","valor":"Magalu Entregas"},{"chave":"SHOPEE","campo":"transp","valor":"Shopee"},{"chave":"SBA6","campo":"transp","valor":"Mercado Livre"},{"chave":"J&T","campo":"transp","valor":"J&T Express"}]');
+  document.addEventListener('DOMContentLoaded', function() {
+    var hojeObj = new Date();
+    var diaStr = String(hojeObj.getDate()).padStart(2, '0');
+    var mesStr = String(hojeObj.getMonth() + 1).padStart(2, '0');
+    var anoStr = hojeObj.getFullYear();
+    var dataChaveHoje = anoStr + '-' + mesStr + '-' + diaStr;
+    var dataFormatadaHoje = diaStr + '/' + mesStr + '/' + anoStr;
 
-  var ultimoTextoLido = '';
-  var fotoTitularTemp = '';
-  var familiaresTemp = [];
-  var streamAtivo = null;
+    document.getElementById('data-topo').textContent = 'Data: ' + dataFormatadaHoje;
 
-  função mudarAba(nome) {
-    var telas = document.querySelectorAll('.tela');
-    para (var i = 0; i < telas.length; i++) {
-      telas[i].classList.remove('ativa');
-    }
-    var btns = document.querySelectorAll('.nav button');
-    para (var j = 0; j < btns.length; j++) {
-      btns[j].classList.remove('ativo');
-    }
-    var alvo = document.getElementById('aba-' + nome);
-    if (alvo) alvo.classList.add('ativa');
-    var ativo = document.getElementById('btn-nav-' + nome);
-    if (ativo) ativo.classList.add('ativo');
-    renderizarTudo();
-  }
+    // Banco de dados local persistente
+    var camposForm = JSON.parse(localStorage.getItem('portaria_campos_v1') || '[{"id":"destinatario","nome":"Nome do Morador","gatilho":"DESTINAT","fixo":true},{"id":"unidade","nome":"Apartamento / Unidade","gatilho":"APTO","fixo":true},{"id":"transportadora","nome":"Transportadora / Loja","gatilho":"","fixo":true},{"id":"rastreio","nome":"Codigo / Rastreio","gatilho":"BR","fixo":false},{"id":"observacao","nome":"Observacao / Volume","gatilho":"","fixo":false}]');
+    var moradores = JSON.parse(localStorage.getItem('portaria_moradores_v1') || '[]');
+    var historicoDias = JSON.parse(localStorage.getItem('portaria_backups_dias_v1') || '{}');
+    var regrasIA = JSON.parse(localStorage.getItem('portaria_regras_ia_v1') || '[{"palavra":"MAGALU","campo":"transportadora","valor":"Magalu Entregas"},{"palavra":"SHOPEE","campo":"transportadora","valor":"Shopee"},{"palavra":"MERCADO","campo":"transportadora","valor":"Mercado Livre"},{"palavra":"J&T","campo":"transportadora","valor":"J&T Express"},{"palavra":"AMAZON","campo":"transportadora","valor":"Amazon"},{"palavra":"CORREIOS","campo":"transportadora","valor":"Correios"}]');
 
-  função abrirCameraNativaOuWeb() {
-    // 1. Se o plugin cordova-plugin-camera estiver instalado no APK, use a câmera nativa do Android
-    se (navegador.câmera && navegador.câmera.obterImagem) {
-      navigator.camera.getPicture(
-        function(imageData) {
-          var dataUrl = 'data:image/jpeg;base64,' + imageData;
-          OCR(dataUrl);
-        },
-        function(err) {
-          alert('Câmera cancelada ou sem permissão: ' + err);
-        },
-        {
-          qualidade: 80,
-          destinationType: navigator.camera.DestinationType.DATA_URL,
-          sourceType: navigator.camera.PictureSourceType.CAMERA,
-          encodingType: navigator.camera.EncodingType.JPEG,
-          correctOrientation: true
-        }
-      );
-      retornar;
-    }
-
-    // 2. Fallback: Abre viseira de vídeo ao vivo no WebView/Navegador
-    var box = document.getElementById('visor-camera-box');
-    var video = document.getElementById('video-camera');
-    se (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-        .then(function(stream) {
-          streamAtivo = fluxo;
-          video.srcObject = stream;
-          box.style.display = 'block';
-          video.play();
-        })
-        .catch(function(e) {
-          alert('Não foi possível abrir a câmera ao vivo no APK sem permissão nativa. Use o botão Escolher Foto da Galeria ou adicione cordova-plugin-camera no config.xml.');
-        });
-    } else {
-      alert('Câmera direta indisponivel neste modo. Use Escolher Foto da Galeria.');
-    }
-  }
-
-  função fecharCameraWeb() {
-    if (streamAtivo) {
-      var tracks = streamAtivo.getTracks();
-      para (var i = 0; i < tracks.length; i++) {
-        tracks[i].stop();
-      }
-      streamAtivo = null;
-    }
-    document.getElementById('visor-camera-box').style.display = 'none';
-  }
-
-  função capturarFrameCamera() {
-    var video = document.getElementById('video-camera');
-    var tela = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    var ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    var fotoBase64 = canvas.toDataURL('imagem/jpeg', 0,85);
-    fecharCameraWeb();
-    OCR(fotoBase64);
-  }
-
-  function lerArquivoGaleria(event) {
-    var files = event.target.files;
-    Se (!arquivos || !comprimento_dos_arquivos) retorne;
-    processarOCR(files[0]);
-  }
-
-  função OCR(fonteImagem) {
-    var aviso = document.getElementById('aviso-ia');
-    aviso.style.display = 'block';
-    aviso.textContent = 'Lendo imagem e consultando memória da IA...';
-
-    se (typeof Tesseract === 'undefined') {
-      aviso.textContent = 'Biblioteca de leitura offline ainda carregando ou sem internet na primeira abertura.';
-      retornar;
-    }
-
-    Tesseract.recognize(fonteImagem, 'por').then(function(res) {
-      ultimoTextoLido = res.data.text;
-      document.getElementById('texto-lido-box').textContent = ultimoTextoLido;
-      aplicarInteligencia(ultimoTextoLido);
-      aviso.textContent = 'Leitura concluída! Corrija qualquer campo que você precise antes de salvar.';
-    }).catch(function(err) {
-      aviso.textContent = 'Erro ao ler imagem. Tente novamente com mais luz.';
-    });
-  }
-
-  função aplicarInteligência(texto) {
-    var superior = texto.toUpperCase();
-    var linhas = texto.split('\n');
-
-    para (var i = 0; i < camposBase.length; i++) {
-      var el = document.getElementById('campo-valor-' + camposBase[i].id);
-      se (el) el.valor = '';
-    }
-
-    para (var m = 0; m < memoriaIA.length; m++) {
-      var reg = memoriaIA[m];
-      se (upper.indexOf(reg.chave.toUpperCase()) !== -1) {
-        var inputAlvo = document.getElementById('campo-valor-' + reg.campo);
-        se (inputAlvo && !inputAlvo.value) {
-          inputAlvo.value = reg.valor;
-        }
-      }
-    }
-
-    para (var c = 0; c < camposBase.length; c++) {
-      var campo = @Base[c];
-      var inputCampo = document.getElementById('campo-valor-' + campo.id);
-      se (campo.chave && campoDeEntrada && !campoDeEntrada.valor) {
-        var gatilhoUpper = campo.chave.toUpperCase();
-        for (var l = 0; l < linhas.length; l++) {
-          var linhaUpper = linhas[l].toUpperCase();
-          var pos = linhaUpper.indexOf(gatilhoUpper);
-          se (pos !== -1) {
-            var resto = linhas[l].substring(pos + campo.chave.length).replace(/[:\-]/g, '').trim();
-            se (rest.length > 1) {
-              inputCampo.value = resto;
-            } senão se (linhas[l + 1]) {
-              inputCampo.value = linhas[l + 1].trim();
-            }
-            quebra;
-          }
-        }
-      }
-    }
-
-    var inputApto = document.getElementById('campo-valor-apto');
-    se (inputApto && !inputApto.value) {
-      var matchApto = upper.match(/(APTO|APT|BLOCO)\s*([0-9A-Z]+)/);
-      se (matchApto && matchApto[2]) inputApto.value = 'Apto ' + matchApto[2];
-    }
-
-    var matchBox = document.getElementById('match-box');
-    matchBox.style.display = 'none';
-
-    para (var k = 0; k < moradores.length; k++) {
-      var mor = moradores[k];
-      var achou = falso;
-      var fotoExibir = mor.foto;
-      var nomeExibir = mor.nome;
-
-      se (upper.indexOf(mor.nome.toUpperCase()) !== -1) {
-        achou = true;
-      } senão se (mor.familiares) {
-        para (var f = 0; f < mor.familiares.length; f++) {
-          var fam = mor.familiares[f];
-          se (fam.nome && upper.indexOf(fam.nome.toUpperCase()) !== -1) {
-            achou = true;
-            nomeExibir = fam.nome + '(' + fam.parentesco + ' - ' + mor.nome + ')';
-            if (fam.foto) fotoExibir = fam.foto;
-            quebra;
-          }
-        }
-      }
-
-      if (achou) {
-        var inNome = document.getElementById('campo-valor-nome');
-        var inApto = document.getElementById('campo-valor-apto');
-        se (emNome) emNome.valor = nomeExibir;
-        if (inApto) inApto.valor = mor.apto;
-
-        matchBox.style.display = 'block';
-        document.getElementById('match-titulo').textContent = 'Morador Reconhecido: ' + mor.apto;
-        document.getElementById('match-desc').textContent = nomeExibir;
-        var imgEl = document.getElementById('match-foto');
-        if (fotoExibir) {
-          imgEl.src = fotoExibir;
-          imgEl.style.display = 'block';
-        } else {
-          imgEl.style.display = 'none';
-        }
-        quebra;
-      }
-    }
-  }
-
-  função renderizarFormulario() {
-    var container = document.getElementById('formulario-dinamico');
-    var html = '';
-    para (var i = 0; i < camposBase.length; i++) {
-      var c = followBase[i];
-      html += '<label>' + c.titulo + '</label>';
-      html += '<input type="text" id="campo-valor-' + c.id + '" placeholder="Digite ou escaneie...">';
-    }
-    container.innerHTML = html;
-  }
-
-  função adicionarCampoColeta() {
-    var titulo = document.getElementById('novo-campo-titulo').value.trim();
-    var chave = document.getElementById('novo-campo-chave').value.trim();
-    if (!titulo) {
-      alert('Digite o nome do campo.');
-      retornar;
-    }
-    var id = 'campo_' + Date.now();
-    camposBase.push({ id: id, título: título, chave: chave });
-    localStorage.setItem('pia_campos', JSON.stringify(camposBase));
-    document.getElementById('novo-campo-titulo').value = '';
-    document.getElementById('novo-campo-chave').value = '';
-    renderizarTudo();
-    alert('Campo adicionado com sucesso!');
-  }
-
-  função comprimirImagemArquivo(arquivo, callback) {
-    var leitor = new FileReader();
-    leitor.onload = função(e) {
-      var img = nova Image();
-      img.onload = function() {
-        var tela = document.createElement('canvas');
-        canvas.width = 140;
-        canvas.height = 140;
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, 140, 140);
-        callback(canvas.toDataURL('image/jpeg', 0.7));
+    if (!historicoDias[dataChaveHoje]) {
+      historicoDias[dataChaveHoje] = {
+        dataFormatada: dataFormatadaHoje,
+        nomeArquivo: 'backup_portaria_' + diaStr + '-' + mesStr + '-' + anoStr + '.pdf',
+        registros: []
       };
-      img.src = e.target.result;
-    };
-    leitor.readAsDataURL(arquivo);
-  }
+      salvarStorage();
+    }
 
-  função novoFamiliar() {
-    familiaresTemp.push({ nome: '', parentesco: '', foto: '' });
-    renderizarFamiliaresTemp();
-  }
+    var streamCamera = null;
+    var ultimoTextoExtraido = '';
+    var fotoTitularAtual = '';
+    var familiaresAtual = [];
 
-  função renderizarFamiliaresTemp() {
-    var box = document.getElementById('box-familiares');
-    box.innerHTML = '';
-    para (var i = 0; i < familiaresTemp.length; i++) {
-      (function(idx) {
-        var f = familiaresTemp[idx];
-        var div = document.createElement('div');
-        div.className = 'item';
+    function salvarStorage() {
+      localStorage.setItem('portaria_campos_v1', JSON.stringify(camposForm));
+      localStorage.setItem('portaria_moradores_v1', JSON.stringify(moradores));
+      localStorage.setItem('portaria_backups_dias_v1', JSON.stringify(historicoDias));
+      localStorage.setItem('portaria_regras_ia_v1', JSON.stringify(regrasIA));
+    }
 
-        var lbl1 = document.createElement('rótulo');
-        lbl1.textContent = 'Nome da Pessoa' + (idx + 1);
-        var inp1 = document.createElement('input');
-        inp1.type = 'text';
-        inp1.value = f.nome;
-        inp1.placeholder = 'Nome completo';
-        inp1.addEventListener('input', function() { familiaresTemp[idx].nome = this.value; });
+    // Navegacao entre abas
+    function abrirAba(nomeAba) {
+      var abas = document.querySelectorAll('.aba');
+      for (var i = 0; i < abas.length; i++) {
+        abas[i].classList.remove('ativa');
+      }
+      var botoes = document.querySelectorAll('.nav-btn');
+      for (var j = 0; j < botoes.length; j++) {
+        botoes[j].classList.remove('ativo');
+        if (botoes[j].getAttribute('data-aba') === nomeAba) {
+          botoes[j].classList.add('ativo');
+        }
+      }
+      document.getElementById('aba-' + nomeAba).classList.add('ativa');
+      if (nomeAba !== 'encomendas') {
+        fecharCamera();
+      }
+      atualizarInterface();
+    }
 
-        var lbl2 = document.createElement('label');
-        lbl2.textContent = 'Parentesco / Relação';
-        var inp2 = document.createElement('input');
-        inp2.type = 'text';
-        inp2.value = f.parentesco;
-        inp2.placeholder = 'Ex: Esposa, Filho, Morador';
-        inp2.addEventListener('input', function() { familiaresTemp[idx].parentesco = this.value; });
+    var navBotoes = document.querySelectorAll('.nav-btn');
+    for (var n = 0; n < navBotoes.length; n++) {
+      navBotoes[n].addEventListener('click', function() {
+        abrirAba(this.getAttribute('data-aba'));
+      });
+    }
 
-        var lbl3 = document.createElement('label');
-        lbl3.textContent = 'Foto';
-        var inp3 = document.createElement('input');
-        inp3.type = 'arquivo';
-        inp3.accept = 'image/*';
-        inp3.addEventListener('change', function(ev) {
-          se (ev.target.files && ev.target.files[0]) {
-            comprimirImagemArquivo(ev.target.files[0], function(dataUrl) {
-              familiaresTemp[idx].foto = dataUrl;
-              renderizarFamiliaresTemp();
+    document.getElementById('btn-topo-morador').addEventListener('click', function() {
+      abrirAba('moradores');
+    });
+
+    document.getElementById('btn-novo-campo-rapido').addEventListener('click', function() {
+      abrirAba('ia');
+    });
+
+    document.getElementById('btn-ver-bruto').addEventListener('click', function() {
+      var area = document.getElementById('texto-bruto-area');
+      area.style.display = (area.style.display === 'block') ? 'none' : 'block';
+    });
+
+    // 1. CAMERA REAL MODO LENS E GALERIA
+    document.getElementById('btn-abrir-camera').addEventListener('click', function() {
+      var visor = document.getElementById('visor-camera-box');
+      var video = document.getElementById('video-lens');
+      visor.style.display = 'block';
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        }).then(function(stream) {
+          streamCamera = stream;
+          video.srcObject = stream;
+          video.play();
+        }).catch(function() {
+          visor.style.display = 'none';
+          alert('Nao foi possivel abrir a camera ao vivo neste visor. Use o botao Foto da Galeria ao lado.');
+        });
+      } else {
+        visor.style.display = 'none';
+        alert('Camera ao vivo indisponivel neste navegador. Use Foto da Galeria.');
+      }
+    });
+
+    function fecharCamera() {
+      if (streamCamera) {
+        var tracks = streamCamera.getTracks();
+        for (var i = 0; i < tracks.length; i++) {
+          tracks[i].stop();
+        }
+        streamCamera = null;
+      }
+      document.getElementById('visor-camera-box').style.display = 'none';
+    }
+
+    document.getElementById('btn-fechar-camera').addEventListener('click', fecharCamera);
+
+    document.getElementById('btn-capturar-frame').addEventListener('click', function() {
+      var video = document.getElementById('video-lens');
+      var canvas = document.getElementById('canvas-lens');
+      if (!video.videoWidth) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Aumenta contraste para leitura estilo Lens
+      aplicarFiltroContraste(ctx, canvas.width, canvas.height);
+      var imagemData = canvas.toDataURL('image/jpeg', 0.9);
+      fecharCamera();
+      executarOCR(imagemData);
+    });
+
+    document.getElementById('input-galeria').addEventListener('change', function(e) {
+      var arquivo = e.target.files[0];
+      if (!arquivo) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.getElementById('canvas-lens');
+          var escala = Math.min(1200 / img.width, 1);
+          canvas.width = img.width * escala;
+          canvas.height = img.height * escala;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          aplicarFiltroContraste(ctx, canvas.width, canvas.height);
+          executarOCR(canvas.toDataURL('image/jpeg', 0.9));
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(arquivo);
+      e.target.value = '';
+    });
+
+    function aplicarFiltroContraste(ctx, w, h) {
+      var imgData = ctx.getImageData(0, 0, w, h);
+      var data = imgData.data;
+      for (var i = 0; i < data.length; i += 4) {
+        var cinza = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        var ajustado = cinza > 128 ? Math.min(255, cinza * 1.15) : Math.max(0, cinza * 0.85);
+        data[i] = ajustado;
+        data[i + 1] = ajustado;
+        data[i + 2] = ajustado;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function normalizar(str) {
+      return str.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function executarOCR(imagemFonte) {
+      var status = document.getElementById('status-ocr');
+      status.style.display = 'block';
+      status.textContent = 'Lens IA: Lendo texto da imagem e cruzando com moradores...';
+
+      if (typeof Tesseract === 'undefined') {
+        status.textContent = 'Modo offline sem motor OCR carregado. Preencha manualmente.';
+        return;
+      }
+
+      Tesseract.recognize(imagemFonte, 'por').then(function(resultado) {
+        ultimoTextoExtraido = resultado.data.text || '';
+        document.getElementById('texto-bruto-area').textContent = ultimoTextoExtraido;
+        correlacionarDados(ultimoTextoExtraido);
+        status.textContent = 'Leitura concluida! Confira ou edite os campos abaixo.';
+      }).catch(function() {
+        status.textContent = 'Nao foi possivel ler a imagem. Tente novamente com mais foco.';
+      });
+    }
+
+    // 2. CORRELACAO INTELIGENTE (ESTILO LENS + BASE DE MORADORES + APRENDIZADO)
+    function correlacionarDados(textoBruto) {
+      var textoNorm = normalizar(textoBruto);
+      var linhas = textoBruto.split('
+');
+
+      // Limpa formulario atual
+      for (var i = 0; i < camposForm.length; i++) {
+        var inp = document.getElementById('form-inp-' + camposForm[i].id);
+        if (inp) inp.value = '';
+      }
+
+      // A) Aplica memoria aprendida pela IA
+      for (var r = 0; r < regrasIA.length; r++) {
+        var regra = regrasIA[r];
+        if (textoNorm.indexOf(normalizar(regra.palavra)) !== -1) {
+          var campoAlvo = document.getElementById('form-inp-' + regra.campo);
+          if (campoAlvo && !campoAlvo.value) {
+            campoAlvo.value = regra.valor;
+          }
+        }
+      }
+
+      // B) Extrai dados por gatilhos configurados nos campos
+      for (var c = 0; c < camposForm.length; c++) {
+        var cf = camposForm[c];
+        var elInput = document.getElementById('form-inp-' + cf.id);
+        if (cf.gatilho && elInput && !elInput.value) {
+          var gatNorm = normalizar(cf.gatilho);
+          for (var l = 0; l < linhas.length; l++) {
+            var linhaNorm = normalizar(linhas[l]);
+            var pos = linhaNorm.indexOf(gatNorm);
+            if (pos !== -1) {
+              var resto = linhas[l].substring(pos + cf.gatilho.length).replace(/^[:\-\s]+/, '').trim();
+              if (resto.length > 1) {
+                elInput.value = resto;
+              } else if (linhas[l + 1] && linhas[l + 1].trim().length > 1) {
+                elInput.value = linhas[l + 1].trim();
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      // C) Busca padrao de apartamento/unidade se vazio
+      var inpUnidade = document.getElementById('form-inp-unidade');
+      if (inpUnidade && !inpUnidade.value) {
+        var matchUnid = textoNorm.match(/(APTO|APT|BLOCO|CASA|UNIDADE)\s*[:\-]?\s*([0-9A-Z\-]+)/);
+        if (matchUnid) {
+          inpUnidade.value = matchUnid[1] + ' ' + matchUnid[2];
+        }
+      }
+
+      // D) Cruza com Moradores e Familiares cadastrados
+      var matchCard = document.getElementById('card-match');
+      matchCard.style.display = 'none';
+
+      for (var m = 0; m < moradores.length; m++) {
+        var mor = moradores[m];
+        var encontrou = false;
+        var nomeExibir = mor.titular;
+        var fotoExibir = mor.foto;
+
+        if (mor.titular && textoNorm.indexOf(normalizar(mor.titular)) !== -1) {
+          encontrou = true;
+        } else if (mor.familiares && mor.familiares.length > 0) {
+          for (var f = 0; f < mor.familiares.length; f++) {
+            var fam = mor.familiares[f];
+            if (fam.nome && textoNorm.indexOf(normalizar(fam.nome)) !== -1) {
+              encontrou = true;
+              nomeExibir = fam.nome + ' (Familiar de ' + mor.titular + ')';
+              if (fam.foto) fotoExibir = fam.foto;
+              break;
+            }
+          }
+        }
+
+        if (encontrou) {
+          var inpDest = document.getElementById('form-inp-destinatario');
+          if (inpDest) inpDest.value = nomeExibir;
+          if (inpUnidade) inpUnidade.value = mor.unidade;
+
+          matchCard.style.display = 'block';
+          document.getElementById('match-unidade').textContent = 'Cadastro Confirmado: ' + mor.unidade;
+          document.getElementById('match-pessoa').textContent = nomeExibir;
+          var av = document.getElementById('match-avatar');
+          if (fotoExibir) {
+            av.src = fotoExibir;
+            av.style.display = 'block';
+          } else {
+            av.style.display = 'none';
+          }
+          break;
+        }
+      }
+    }
+
+    // 3. FORMULARIO EDITAVEL E APRENDIZADO DA IA
+    function renderizarFormularioEncomenda() {
+      var box = document.getElementById('container-campos-form');
+      var html = '';
+      for (var i = 0; i < camposForm.length; i++) {
+        var cf = camposForm[i];
+        html += '<div class="campo-item">';
+        html += '<div class="campo-topo"><label>' + cf.nome + '</label>';
+        if (!cf.fixo) {
+          html += '<button type="button" class="btn-pequeno btn-perigo" data-del-campo="' + i + '">Excluir Campo</button>';
+        }
+        html += '</div>';
+        html += '<input type="text" id="form-inp-' + cf.id + '" placeholder="Preenchimento automatico ou manual">';
+        html += '</div>';
+      }
+      box.innerHTML = html;
+
+      var btnsDel = box.querySelectorAll('[data-del-campo]');
+      for (var b = 0; b < btnsDel.length; b++) {
+        btnsDel[b].addEventListener('click', function() {
+          var idx = parseInt(this.getAttribute('data-del-campo'), 10);
+          camposForm.splice(idx, 1);
+          salvarStorage();
+          atualizarInterface();
+        });
+      }
+    }
+
+    document.getElementById('btn-salvar-encomenda').addEventListener('click', function() {
+      var horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      var valoresColetados = {};
+      var temAlgumDado = false;
+
+      for (var i = 0; i < camposForm.length; i++) {
+        var cf = camposForm[i];
+        var val = document.getElementById('form-inp-' + cf.id).value.trim();
+        valoresColetados[cf.nome] = val;
+        if (val) temAlgumDado = true;
+
+        // IA aprende se houve OCR e o usuario corrigiu/preencheu transportadora ou destinatario
+        if (ultimoTextoExtraido && val.length >= 3 && (cf.id === 'transportadora' || cf.id === 'destinatario')) {
+          treinarIAInterna(ultimoTextoExtraido, cf.id, val);
+        }
+      }
+
+      if (!temAlgumDado) {
+        alert('Preencha pelo menos um campo da encomenda antes de salvar.');
+        return;
+      }
+
+      var novoRegistro = {
+        id: Date.now(),
+        horaEntrada: horaAtual,
+        horaSaida: '',
+        status: 'Na Portaria',
+        retiradoPor: '',
+        dados: valoresColetados
+      };
+
+      historicoDias[dataChaveHoje].registros.unshift(novoRegistro);
+      salvarStorage();
+
+      // Limpa formulario apos salvar
+      for (var j = 0; j < camposForm.length; j++) {
+        var inp = document.getElementById('form-inp-' + camposForm[j].id);
+        if (inp) inp.value = '';
+      }
+      ultimoTextoExtraido = '';
+      document.getElementById('card-match').style.display = 'none';
+      document.getElementById('status-ocr').style.display = 'none';
+
+      atualizarInterface();
+      gerarBackupPDFAutomatico(dataChaveHoje, true);
+    });
+
+    function treinarIAInterna(textoOCR, campoId, valorCorreto) {
+      var palavras = normalizar(textoOCR).split(/\s+/);
+      var ignorar = ['DESTINATARIO', 'REMETENTE', 'ENDERECO', 'BAIRRO', 'CIDADE', 'ESTADO', 'BRASIL', 'SALVADOR', 'BAHIA', 'CEP'];
+      for (var i = 0; i < palavras.length; i++) {
+        var p = palavras[i].replace(/[^A-Z0-9]/g, '');
+        if (p.length >= 5 && ignorar.indexOf(p) === -1) {
+          var existe = false;
+          for (var r = 0; r < regrasIA.length; r++) {
+            if (regrasIA[r].palavra === p && regrasIA[r].campo === campoId) {
+              regrasIA[r].valor = valorCorreto;
+              existe = true;
+              break;
+            }
+          }
+          if (!existe) {
+            regrasIA.unshift({ palavra: p, campo: campoId, valor: valorCorreto });
+            if (regrasIA.length > 60) regrasIA.pop();
+          }
+          break;
+        }
+      }
+    }
+
+    // 4. CONTROLE DE ENTRADA E SAIDA + EDICAO + EXCLUSAO
+    function renderizarRegistrosDia() {
+      var lista = historicoDias[dataChaveHoje].registros;
+      document.getElementById('contagem-dia').textContent = lista.length;
+      var container = document.getElementById('lista-registros-dia');
+
+      if (lista.length === 0) {
+        container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">Nenhuma encomenda registrada hoje.</p>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < lista.length; i++) {
+        var reg = lista[i];
+        var badgeClasse = reg.status === 'Na Portaria' ? 'badge-pendente' : 'badge-retirado';
+        html += '<div class="registro-box">';
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">';
+        html += '<span class="badge ' + badgeClasse + '">' + reg.status + '</span>';
+        html += '<small style="color:#94a3b8;">Entrada: ' + reg.horaEntrada + (reg.horaSaida ? ' | Saida: ' + reg.horaSaida : '') + '</small>';
+        html += '</div>';
+
+        for (var chave in reg.dados) {
+          if (reg.dados[chave]) {
+            html += '<div style="font-size:13px; margin-bottom:2px;"><strong>' + chave + ':</strong> ' + reg.dados[chave] + '</div>';
+          }
+        }
+
+        if (reg.retiradoPor) {
+          html += '<div style="font-size:12px; color:#6ee7b7; margin-top:4px;">Retirado por: ' + reg.retiradoPor + '</div>';
+        }
+
+        html += '<div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">';
+        if (reg.status === 'Na Portaria') {
+          html += '<button type="button" class="btn-pequeno btn-saida" data-saida="' + i + '">Registrar Saida</button>';
+        }
+        html += '<button type="button" class="btn-pequeno btn-editar" data-editar-reg="' + i + '">Editar</button>';
+        html += '<button type="button" class="btn-pequeno btn-perigo" data-excluir-reg="' + i + '">Excluir</button>';
+        html += '</div></div>';
+      }
+      container.innerHTML = html;
+
+      // Eventos de Saida, Edicao e Exclusao
+      var btnsSaida = container.querySelectorAll('[data-saida]');
+      for (var s = 0; s < btnsSaida.length; s++) {
+        btnsSaida[s].addEventListener('click', function() {
+          var idx = parseInt(this.getAttribute('data-saida'), 10);
+          var quem = prompt('Nome de quem retirou a encomenda:');
+          if (quem !== null) {
+            historicoDias[dataChaveHoje].registros[idx].status = 'Entregue / Retirado';
+            historicoDias[dataChaveHoje].registros[idx].retiradoPor = quem.trim() || 'Morador';
+            historicoDias[dataChaveHoje].registros[idx].horaSaida = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            salvarStorage();
+            atualizarInterface();
+            gerarBackupPDFAutomatico(dataChaveHoje, true);
+          }
+        });
+      }
+
+      var btnsEditar = container.querySelectorAll('[data-editar-reg]');
+      for (var e = 0; e < btnsEditar.length; e++) {
+        btnsEditar[e].addEventListener('click', function() {
+          var idx = parseInt(this.getAttribute('data-editar-reg'), 10);
+          var reg = historicoDias[dataChaveHoje].registros[idx];
+          for (var c = 0; c < camposForm.length; c++) {
+            var nomeCampo = camposForm[c].nome;
+            var inp = document.getElementById('form-inp-' + camposForm[c].id);
+            if (inp) inp.value = reg.dados[nomeCampo] || '';
+          }
+          historicoDias[dataChaveHoje].registros.splice(idx, 1);
+          salvarStorage();
+          atualizarInterface();
+          window.scrollTo(0, 0);
+        });
+      }
+
+      var btnsExcluir = container.querySelectorAll('[data-excluir-reg]');
+      for (var x = 0; x < btnsExcluir.length; x++) {
+        btnsExcluir[x].addEventListener('click', function() {
+          var idx = parseInt(this.getAttribute('data-excluir-reg'), 10);
+          if (confirm('Deseja excluir este registro?')) {
+            historicoDias[dataChaveHoje].registros.splice(idx, 1);
+            salvarStorage();
+            atualizarInterface();
+            gerarBackupPDFAutomatico(dataChaveHoje, true);
+          }
+        });
+      }
+    }
+
+    // 5. PASTA BACKUP DADOS PDF (ATUALIZA NO DIA E SEPARA POR DATA)
+    function gerarBackupPDFAutomatico(chaveDia, silencioso) {
+      var pacoteDia = historicoDias[chaveDia];
+      if (!pacoteDia) return;
+
+      var htmlTabela = '<h2>Pasta: backup dados PDF / ' + pacoteDia.nomeArquivo + '</h2>';
+      htmlTabela += '<p>Data do Relatorio: ' + pacoteDia.dataFormatada + ' | Total de Registros: ' + pacoteDia.registros.length + '</p>';
+      htmlTabela += '<table><thead><tr><th>Entrada</th><th>Saida</th><th>Status</th><th>Dados da Encomenda</th><th>Retirado Por</th></tr></thead><tbody>';
+
+      for (var i = 0; i < pacoteDia.registros.length; i++) {
+        var r = pacoteDia.registros[i];
+        var detalhes = '';
+        for (var k in r.dados) {
+          if (r.dados[k]) detalhes += k + ': ' + r.dados[k] + ' | ';
+        }
+        htmlTabela += '<tr>';
+        htmlTabela += '<td>' + r.horaEntrada + '</td>';
+        htmlTabela += '<td>' + (r.horaSaida || '-') + '</td>';
+        htmlTabela += '<td>' + r.status + '</td>';
+        htmlTabela += '<td>' + detalhes + '</td>';
+        htmlTabela += '<td>' + (r.retiradoPor || '-') + '</td>';
+        htmlTabela += '</tr>';
+      }
+      htmlTabela += '</tbody></table>';
+
+      // Salva o espelho atualizado dentro da pasta virtual "backup dados PDF"
+      pacoteDia.ultimaAtualizacao = new Date().toLocaleTimeString('pt-BR');
+      salvarStorage();
+
+      if (!silencioso) {
+        var areaPdf = document.getElementById('area-impressao-pdf');
+        areaPdf.innerHTML = htmlTabela;
+        document.title = pacoteDia.nomeArquivo.replace('.pdf', '');
+        window.print();
+      }
+    }
+
+    function renderizarPastaBackupPDF() {
+      var container = document.getElementById('lista-arquivos-pdf');
+      var chaves = Object.keys(historicoDias).sort().reverse();
+      var html = '';
+
+      for (var i = 0; i < chaves.length; i++) {
+        var ch = chaves[i];
+        var item = historicoDias[ch];
+        html += '<div class="registro-box">';
+        html += '<strong style="color:#38bdf8; font-size:14px;">' + item.nomeArquivo + '</strong>';
+        html += '<div style="font-size:12px; color:#94a3b8; margin-top:4px;">Data: ' + item.dataFormatada + ' | Registros: ' + item.registros.length + '</div>';
+        if (item.ultimaAtualizacao) {
+          html += '<div style="font-size:11px; color:#6ee7b7;">Backup automatico atualizado as ' + item.ultimaAtualizacao + '</div>';
+        }
+        html += '<button type="button" class="btn btn-azul" data-baixar-pdf="' + ch + '" style="margin-top:8px; padding:9px;">Abrir / Exportar Arquivo PDF</button>';
+        html += '</div>';
+      }
+      container.innerHTML = html;
+
+      var btnsPdf = container.querySelectorAll('[data-baixar-pdf]');
+      for (var b = 0; b < btnsPdf.length; b++) {
+        btnsPdf[b].addEventListener('click', function() {
+          gerarBackupPDFAutomatico(this.getAttribute('data-baixar-pdf'), false);
+        });
+      }
+    }
+
+    // 6. CADASTRO DE MORADORES E FAMILIARES (ADICIONAR, ALTERAR E EXCLUIR)
+    function comprimirImagem(file, callback) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = 140;
+          canvas.height = 140;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, 140, 140);
+          callback(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('mor-foto-input').addEventListener('change', function(e) {
+      if (!e.target.files[0]) return;
+      comprimirImagem(e.target.files[0], function(base64) {
+        fotoTitularAtual = base64;
+        var prev = document.getElementById('mor-foto-preview');
+        prev.src = base64;
+        prev.style.display = 'block';
+      });
+    });
+
+    document.getElementById('btn-add-familiar').addEventListener('click', function() {
+      familiaresAtual.push({ nome: '', parentesco: '', foto: '' });
+      renderizarFamiliaresForm();
+    });
+
+    function renderizarFamiliaresForm() {
+      var box = document.getElementById('container-familiares-form');
+      var html = '';
+      for (var i = 0; i < familiaresAtual.length; i++) {
+        var fam = familiaresAtual[i];
+        html += '<div class="registro-box">';
+        html += '<div style="display:flex; justify-content:space-between;"><strong>Familiar ' + (i + 1) + '</strong>';
+        html += '<button type="button" class="btn-pequeno btn-perigo" data-rem-fam="' + i + '">Remover</button></div>';
+        html += '<label>Nome Completo</label>';
+        html += '<input type="text" data-fam-nome="' + i + '" value="' + fam.nome + '" placeholder="Nome do familiar">';
+        html += '<label>Parentesco</label>';
+        html += '<input type="text" data-fam-par="' + i + '" value="' + fam.parentesco + '" placeholder="Ex: Esposa, Filho">';
+        html += '<label>Foto do Familiar</label>';
+        html += '<input type="file" accept="image/*" data-fam-foto="' + i + '">';
+        if (fam.foto) {
+          html += '<img src="' + fam.foto + '" class="avatar" style="margin-top:6px;">';
+        }
+        html += '</div>';
+      }
+      box.innerHTML = html;
+
+      var inpsNome = box.querySelectorAll('[data-fam-nome]');
+      for (var a = 0; a < inpsNome.length; a++) {
+        inpsNome[a].addEventListener('input', function() {
+          familiaresAtual[parseInt(this.getAttribute('data-fam-nome'), 10)].nome = this.value;
+        });
+      }
+
+      var inpsPar = box.querySelectorAll('[data-fam-par]');
+      for (var b = 0; b < inpsPar.length; b++) {
+        inpsPar[b].addEventListener('input', function() {
+          familiaresAtual[parseInt(this.getAttribute('data-fam-par'), 10)].parentesco = this.value;
+        });
+      }
+
+      var inpsFoto = box.querySelectorAll('[data-fam-foto]');
+      for (var c = 0; c < inpsFoto.length; c++) {
+        inpsFoto[c].addEventListener('change', function(ev) {
+          var idx = parseInt(this.getAttribute('data-fam-foto'), 10);
+          if (ev.target.files[0]) {
+            comprimirImagem(ev.target.files[0], function(b64) {
+              familiaresAtual[idx].foto = b64;
+              renderizarFamiliaresForm();
             });
           }
         });
-
-        div.appendChild(lbl1);
-        div.appendChild(inp1);
-        div.appendChild(lbl2);
-        div.appendChild(inp2);
-        div.appendChild(lbl3);
-        div.appendChild(inp3);
-
-        if (f.foto) {
-          var img = document.createElement('img');
-          img.src = f.foto;
-          img.style.width = '45px';
-          img.style.height = '45px';
-          img.style.borderRadius = '6px';
-          img.style.marginTop = '6px';
-          div.appendChild(img);
-        }
-
-        box.appendChild(div);
-      })(i);
-    }
-  }
-
-  função salvarMoradorCompleto() {
-    var apto = document.getElementById('cad-apto').value.trim();
-    var nome = document.getElementById('cad-nome').value.trim();
-    var whats = document.getElementById('cad-whats').value.trim();
-    se (!apto || !nome) {
-      alert('Preenche o Apartamento e o Nome.');
-      retornar;
-    }
-    moradores.unshift({
-      apto: apto,
-      nome: nome,
-      o que é: o que é,
-      foto: fotoTitularTemp,
-      familiares: familiaresTemp
-    });
-    localStorage.setItem('pia_moradores', JSON.stringify(moradores));
-    document.getElementById('cad-apto').value = '';
-    document.getElementById('cad-nome').value = '';
-    document.getElementById('cad-whats').value = '';
-    document.getElementById('prev-titular').style.display = 'none';
-    fotoTitularTemp = '';
-    familiaresTemp = [];
-    renderizarFamiliaresTemp();
-    renderizarTudo();
-    alert('Morador e familiares salvos!');
-  }
-
-  função registrarEAtualizarIA() {
-    var dadosSalvos = {};
-    para (var i = 0; i < camposBase.length; i++) {
-      var id = superioresBase[i].id;
-      var el = document.getElementById('campo-valor-' + id);
-      var val = el? el.value.trim() : '';
-      dadosSalvos[camposBase[i].titulo] = val;
-
-      se (ultimoTextoLido && val.length > 2 && id === 'transp') {
-        var palavras = ultimoTextoLido.toUpperCase().split(/\s+/);
-        for (var p = 0; p < palavras.length; p++) {
-          var pal = palavras[p].replace(/[^A-Z0-9]/g, '');
-          if (pal.length >= 5 && pal !== 'DESTINATARIO' && pal !== 'REMETENTE' && pal !== 'SALVADOR' && pal !== 'BAHIA') {
-            memoriaIA.unshift({ chave: pal, campo: id, valor: val });
-            quebra;
-          }
-        }
       }
-    }
 
-    localStorage.setItem('pia_memoria', JSON.stringify(memoriaIA));
-
-    var agora = new Date();
-    var hora = ('0' + agora.getHours()).slice(-2) + ':' + ('0' + agora.getMinutes()).slice(-2);
-    encomendas.unshift({ hora: hora, dados: dadosSalvos });
-    localStorage.setItem('pia_encomendas', JSON.stringify(encomendas));
-
-    ultimoTextoLido = '';
-    document.getElementById('match-box').style.display = 'none';
-    document.getElementById('aviso-ia').style.display = 'none';
-    renderizarTudo();
-    gerarPDFRelatório();
-    alert('Encomenda salva e PDF gerado!');
-  }
-
-  função gerarPDFRelatório() {
-    se (typeof window.jspdf === 'undefined') retorne;
-    var doc = new window.jspdf.jsPDF();
-    var agora = new Date();
-    var dados = ('0' + agora.getDate()).slice(-2) + '/' + ('0' + (agora.getMonth() + 1)).slice(-2) + '/' + agora.getFullYear();
-    doc.setFontSize(14);
-    doc.text('Relatório Portaria IA - ' + dados, 14, 18);
-    doc.setFontSize(10);
-    var y = 30;
-    para (var i = 0; i < encomendas.length; i++) {
-      var enc = encomendas[i];
-      var resumo = (i + 1) + '. [' + enc.hora + '] ';
-      for (var chave em enc.dados) {
-        if (enc.dados[chave]) resumo += chave + ': ' + enc.dados[chave] + ' | ';
-      }
-      doc.text(resumo, 14, y);
-      y += 8;
-      se (y > 280) { doc.addPage(); y = 20; }
-    }
-    doc.save('Portaria_' + data.replace(/\//g, '-') + '.pdf');
-  }
-
-  função renderizarTudo() {
-    renderizarFormulario();
-
-    var divEnc = document.getElementById('lista-encomendas');
-    var htmlEnc = '';
-    para (var i = 0; i < encomendas.length; i++) {
-      var enc = encomendas[i];
-      var textoZap = 'Olá! Chegou uma encomenda na portaria como '+ enc.hora +'. ';
-      htmlEnc += '<div class="item"><small style="color:#38bdf8;">' + enc.hora + '</small><br>';
-      para (var k em enc.dados) {
-        if (enc.dados[k]) {
-          htmlEnc += '<strong>' + k + ':</strong> ' + enc.dados[k] + '<br>';
-          textoZap += k + ': ' + enc.dados[k] + ' | ';
-        }
-      }
-      htmlEnc += '<a href="https://wa.me/?text=' + encodeURIComponent(textoZap) + '" target="_blank" style="display:inline-block;margin-top:6px;background:#25d366;color:#052e16;padding:6px 10px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold;">Avisar WhatsApp</a>';
-      htmlEnc += '</div>';
-    }
-    divEnc.innerHTML = htmlEnc || '<p style="font-size:13px;color:#94a3b8;">Nenhum registro hoje.</p>';
-
-    var divMor = document.getElementById('lista-moradores');
-    var htmlMor = '';
-    para (var m = 0; m < moradores.length; m++) {
-      var mor = moradores[m];
-      htmlMor += '<div class="item flex-row">';
-      if (mor.foto) htmlMor += '<img src="' + mor.foto + '" class="foto-perfil">';
-      htmlMor += '<div><strong>' + mor.apto + ' - ' + mor.nome + '</strong><br>';
-      htmlMor += '<small style="color:#94a3b8;">Familiares cadastrados: ' + (mor.familiares ? mor.familiares.length : 0) + '</small></div>';
-      htmlMor += '</div>';
-    }
-    divMor.innerHTML = htmlMor || '<p style="font-size:13px;color:#94a3b8;">Nenhum morador cadastrado.</p>';
-
-    var divCampos = document.getElementById('lista-campos-config');
-    divCampos.innerHTML = '';
-    para (var c = 0; c < camposBase.length; c++) {
-      (function(idx) {
-        var item = document.createElement('div');
-        item.className = 'item';
-        item.innerHTML = '<strong>' + camposBase[idx].titulo + '</strong> <small>(Gatilho: ' + (camposBase[idx].chave || 'Livre') + ')</small>';
-        se (idx >= 3) {
-          var btnRem = document.createElement('button');
-          btnRem.type = 'button';
-          btnRem.className = 'btn-vermelho';
-          btnRem.textContent = 'Removedor';
-          btnRem.style.display = 'block';
-          btnRem.addEventListener('click', function() {
-            camposBase.splice(idx, 1);
-            localStorage.setItem('pia_campos', JSON.stringify(camposBase));
-            renderizarTudo();
-          });
-          item.appendChild(btnRem);
-        }
-        divCampos.appendChild(item);
-      })(c);
-    }
-
-    var divMem = document.getElementById('lista-memoria-ia');
-    var htmlMem = '';
-    para (var x = 0; x < memoriaIA.length; x++) {
-      htmlMem += '<div class="item"><small>Se ler <strong>' + memoriaIA[x].chave + '</strong> -> preenche <strong>' + memoriaIA[x].valor + '</strong></small></div>';
-    }
-    divMem.innerHTML = htmlMem;
-  }
-
-  // Ligação segura de todos os eventos após carregamento do DOM (Funciona 100% no APK WebView)
-  função iniciarApp() {
-    document.getElementById('btn-topo-morador').addEventListener('click', function() { mudarAba('moradores'); });
-    document.getElementById('btn-nav-inicio').addEventListener('click', function() { mudarAba('inicio'); });
-    document.getElementById('btn-nav-moradores').addEventListener('click', function() { mudarAba('moradores'); });
-    document.getElementById('btn-nav-campos').addEventListener('click', function() { mudarAba('campos'); });
-    document.getElementById('btn-ir-campos').addEventListener('click', function() { mudarAba('campos'); });
-
-    document.getElementById('btn-abrir-camera').addEventListener('click', abrirCameraNativaOuWeb);
-    document.getElementById('btn-capturar-frame').addEventListener('click', capturarFrameCamera);
-    document.getElementById('btn-fechar-camera').addEventListener('click', fecharCameraWeb);
-    document.getElementById('input-galeria').addEventListener('change', lerArquivoGaleria);
-
-    document.getElementById('btn-salvar-encomenda').addEventListener('click', registrarEAtualizarIA);
-    document.getElementById('btn-ver-texto').addEventListener('click', function() {
-      var box = document.getElementById('texto-lido-box');
-      box.style.display = (box.style.display === 'block') ? 'none' : 'block';
-    });
-
-    document.getElementById('input-foto-titular').addEventListener('change', function(ev) {
-      se (ev.target.files && ev.target.files[0]) {
-        comprimirImagemArquivo(ev.target.files[0], function(dataUrl) {
-          fotoTitularTemp = dataUrl;
-          var anterior = document.getElementById('prev-titular');
-          prev.src = dataUrl;
-          prev.style.display = 'block';
+      var btnsRem = box.querySelectorAll('[data-rem-fam]');
+      for (var d = 0; d < btnsRem.length; d++) {
+        btnsRem[d].addEventListener('click', function() {
+          familiaresAtual.splice(parseInt(this.getAttribute('data-rem-fam'), 10), 1);
+          renderizarFamiliaresForm();
         });
       }
+    }
+
+    document.getElementById('btn-salvar-morador').addEventListener('click', function() {
+      var unidade = document.getElementById('mor-unidade').value.trim();
+      var titular = document.getElementById('mor-titular').value.trim();
+      var telefone = document.getElementById('mor-telefone').value.trim();
+      var editIdx = parseInt(document.getElementById('edit-morador-index').value, 10);
+
+      if (!unidade || !titular) {
+        alert('Preencha a Unidade/Apartamento e o Nome do Titular.');
+        return;
+      }
+
+      var objetoMorador = {
+        unidade: unidade,
+        titular: titular,
+        telefone: telefone,
+        foto: fotoTitularAtual,
+        familiares: JSON.parse(JSON.stringify(familiaresAtual))
+      };
+
+      if (editIdx >= 0) {
+        moradores[editIdx] = objetoMorador;
+      } else {
+        moradores.unshift(objetoMorador);
+      }
+
+      salvarStorage();
+      limparFormMorador();
+      atualizarInterface();
+      alert('Dados do morador salvos com sucesso!');
     });
 
-    document.getElementById('btn-add-familiar').addEventListener('click', novoFamiliar);
-    document.getElementById('btn-salvar-morador').addEventListener('click', salvarMoradorCompleto);
-    document.getElementById('btn-add-campo').addEventListener('click', adicionarCampoColeta);
+    function limparFormMorador() {
+      document.getElementById('edit-morador-index').value = '-1';
+      document.getElementById('titulo-form-morador').textContent = 'Cadastrar Morador & Familiares';
+      document.getElementById('mor-unidade').value = '';
+      document.getElementById('mor-titular').value = '';
+      document.getElementById('mor-telefone').value = '';
+      document.getElementById('mor-foto-preview').style.display = 'none';
+      document.getElementById('btn-cancelar-edicao-morador').style.display = 'none';
+      fotoTitularAtual = '';
+      familiaresAtual = [];
+      renderizarFamiliaresForm();
+    }
 
-    renderizarTudo();
-  }
+    document.getElementById('btn-cancelar-edicao-morador').addEventListener('click', limparFormMorador);
 
-  se (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', iniciarApp);
-  } else {
-    iniciarApp();
-  }
-})();
+    function renderizarListaMoradores() {
+      var container = document.getElementById('lista-moradores-cadastrados');
+      if (moradores.length === 0) {
+        container.innerHTML = '<p style="font-size:13px; color:#94a3b8;">Nenhum morador cadastrado.</p>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < moradores.length; i++) {
+        var m = moradores[i];
+        html += '<div class="registro-box">';
+        html += '<div class="flex-row">';
+        if (m.foto) {
+          html += '<img src="' + m.foto + '" class="avatar">';
+        }
+        html += '<div style="flex:1;"><strong>' + m.unidade + ' - ' + m.titular + '</strong>';
+        html += '<div style="font-size:12px; color:#94a3b8;">Tel: ' + (m.telefone || 'Nao informado') + ' | Familiares: ' + (m.familiares ? m.familiares.length : 0) + '</div></div>';
+        html += '</div>';
+        html += '<div style="display:flex; gap:6px; margin-top:8px;">';
+        html += '<button type="button" class="btn-pequeno btn-editar" data-edit-mor="' + i + '">Alterar</button>';
+        html += '<button type="button" class="btn-pequeno btn-perigo" data-del-mor="' + i + '">Excluir</button>';
+        html += '</div></div>';
+      }
+      container.innerHTML = html;
+
+      var btnsEdit = container.querySelectorAll('[data-edit-mor]');
+      for (var a = 0; a < btnsEdit.length; a++) {
+        btnsEdit[a].addEventListener('click', function() {
+          var idx = parseInt(this.getAttribute('data-edit-mor'), 10);
+          var m = moradores[idx];
+          document.getElementById('edit-morador-index').value = idx;
+          document.getElementById('titulo-form-morador').textContent = 'Alterando Cadastro: ' + m.unidade;
+          document.getElementById('mor-unidade').value = m.unidade;
+          document.getElementById('mor-titular').value = m.titular;
+          document.getElementById('mor-telefone').value = m.telefone || '';
+          fotoTitularAtual = m.foto || '';
+          var prev = document.getElementById('mor-foto-preview');
+          if (fotoTitularAtual) {
+            prev.src = fotoTitularAtual;
+            prev.style.display = 'block';
+          } else {
+            prev.style.display = 'none';
+          }
+          familiaresAtual = JSON.parse(JSON.stringify(m.familiares || []));
+          renderizarFamiliaresForm();
+          document.getElementById('btn-cancelar-edicao-morador').style.display = 'block';
+          window.scrollTo(0, 0);
+        });
+      }
+
+      var btnsDel = container.querySelectorAll('[data-del-mor]');
+      for (var b = 0; b < btnsDel.length; b++) {
+        btnsDel[b].addEventListener('click', function() {
+          var idx = parseInt(this.getAttribute('data-del-mor'), 10);
+          if (confirm('Excluir este morador e seus familiares?')) {
+            moradores.splice(idx, 1);
+            salvarStorage();
+            atualizarInterface();
+          }
+        });
+      }
+    }
+
+    // 7. GERENCIAMENTO DE CAMPOS E REGRAS DA IA
+    document.getElementById('btn-criar-campo').addEventListener('click', function() {
+      var nome = document.getElementById('cfg-campo-nome').value.trim();
+      var gatilho = document.getElementById('cfg-campo-gatilho').value.trim();
+      if (!nome) {
+        alert('Digite o nome do campo.');
+        return;
+      }
+      camposForm.push({
+        id: 'custom_' + Date.now(),
+        nome: nome,
+        gatilho: gatilho,
+        fixo: false
+      });
+      salvarStorage();
+      document.getElementById('cfg-campo-nome').value = '';
+      document.getElementById('cfg-campo-gatilho').value = '';
+      atualizarInterface();
+      alert('Novo campo adicionado ao formulario!');
+    });
+
+    function renderizarGerenciarCampos() {
+      var container = document.getElementById('lista-campos-gerenciar');
+      var html = '';
+      for (var i = 0; i < camposForm.length; i++) {
+        var c = camposForm[i];
+        html += '<div class="registro-box" style="display:flex; justify-content:space-between; align-items:center;">';
+        html += '<div><strong>' + c.nome + '</strong><br><small style="color:#94a3b8;">Gatilho IA: ' + (c.gatilho || 'Automatico') + '</small></div>';
+        if (!c.fixo) {
+          html += '<button type="button" class="btn-pequeno btn-perigo" data-rm-cfg="' + i + '">Excluir</button>';
+        }
+        html += '</div>';
+      }
+      container.innerHTML = html;
+
+      var btns = container.querySelectorAll('[data-rm-cfg]');
+      for (var b = 0; b < btns.length; b++) {
+        btns[b].addEventListener('click', function() {
+          camposForm.splice(parseInt(this.getAttribute('data-rm-cfg'), 10), 1);
+          salvarStorage();
+          atualizarInterface();
+        });
+      }
+
+      var boxRegras = document.getElementById('lista-regras-ia');
+      var htmlRegras = '';
+      for (var r = 0; r < regrasIA.length; r++) {
+        htmlRegras += '<div class="registro-box" style="padding:8px;"><small>Palavra <strong>' + regrasIA[r].palavra + '</strong> -> preenche <strong>' + regrasIA[r].valor + '</strong></small></div>';
+      }
+      boxRegras.innerHTML = htmlRegras;
+    }
+
+    function atualizarInterface() {
+      renderizarFormularioEncomenda();
+      renderizarRegistrosDia();
+      renderizarListaMoradores();
+      renderizarGerenciarCampos();
+      renderizarPastaBackupPDF();
+    }
+
+    atualizarInterface();
+  });
 </script>
 </body>
 </html>
