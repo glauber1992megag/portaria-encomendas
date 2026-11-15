@@ -3,659 +3,592 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Portaria Inteligente Pro</title>
-  <!-- Biblioteca OCR gratuita que roda 100% offline no celular -->
+  <title>Portaria IA - Camera Funcionando</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- Biblioteca para gerar PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    :root {
-      --bg-fundo: #0f172a;
-      --bg-cartao: #1e293b;
-      --bg-input: #0f172a;
-      --cor-primaria: #3b82f6;
-      --cor-sucesso: #10b981;
-      --cor-alerta: #f59e0b;
-      --texto-principal: #f8fafc;
-      --texto-secundario: #94a3b8;
-      --borda: #334155;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-fundo);
-      color: var(--texto-principal);
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      padding-bottom: 80px;
-    }
-
-    /* Cabeçalho moderno */
-    header {
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      padding: 20px 16px;
-      border-bottom: 1px solid var(--borda);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .logo-area h1 {
-      font-size: 20px;
-      font-weight: 700;
-      color: #60a5fa;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logo-area p {
-      font-size: 12px;
-      color: var(--texto-secundario);
-      margin-top: 2px;
-    }
-
-    .badge-status {
-      background-color: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    /* Container Principal */
-    main {
-      padding: 16px;
-      flex: 1;
-      max-width: 600px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    .tela {
-      display: none;
-    }
-
-    .tela.ativa {
-      display: block;
-      animation: fadeIn 0.2s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Cartões */
-    .card {
-      background-color: var(--bg-cartao);
-      border: 1px solid var(--borda);
-      border-radius: 16px;
-      padding: 18px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-    }
-
-    .card-titulo {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--texto-principal);
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Botão Gigante de Câmera */
-    .btn-camera-box {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      border-radius: 14px;
-      padding: 22px;
-      text-align: center;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
-      margin-bottom: 12px;
-    }
-
-    .btn-camera-box input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      width: 100%;
-      height: 100%;
-      cursor: pointer;
-    }
-
-    .btn-camera-box span.icone {
-      font-size: 32px;
-      margin-bottom: 6px;
-    }
-
-    .btn-camera-box strong {
-      font-size: 16px;
-      color: white;
-    }
-
-    .btn-camera-box small {
-      font-size: 12px;
-      color: #bfdbfe;
-      margin-top: 2px;
-    }
-
-    /* Barra de Progresso IA */
-    #status-ia {
-      display: none;
-      background-color: rgba(59, 130, 246, 0.15);
-      border: 1px solid #3b82f6;
-      color: #93c5fd;
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 13px;
-      text-align: center;
-      margin-bottom: 14px;
-    }
-
-    /* Formulários */
-    .campo-grupo {
-      margin-bottom: 12px;
-    }
-
-    .campo-grupo label {
-      display: block;
-      font-size: 12px;
-      color: var(--texto-secundario);
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-
-    input[type="text"], select, textarea {
-      width: 100%;
-      padding: 12px 14px;
-      background-color: var(--bg-input);
-      border: 1px solid var(--borda);
-      border-radius: 10px;
-      color: var(--texto-principal);
-      font-size: 15px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus, select:focus, textarea:focus {
-      border-color: var(--cor-primaria);
-    }
-
-    /* Botões de Ação */
-    .btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .btn-sucesso {
-      background-color: var(--cor-sucesso);
-      color: #064e3b;
-    }
-
-    .btn-primario {
-      background-color: var(--cor-primaria);
-      color: white;
-    }
-
-    .btn-whatsapp {
-      background-color: #25d366;
-      color: #052e16;
-      padding: 8px 12px;
-      font-size: 13px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    /* Lista de Encomendas e Modelos */
-    .item-lista {
-      background-color: var(--bg-input);
-      border: 1px solid var(--borda);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 10px;
-    }
-
-    .item-topo {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .tag-apto {
-      background-color: #3b82f6;
-      color: white;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    .tag-transp {
-      font-size: 11px;
-      color: var(--texto-secundario);
-      background-color: #1e293b;
-      padding: 3px 8px;
-      border-radius: 6px;
-    }
-
-    /* Menu Inferior Fixo */
-    .nav-inferior {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background-color: var(--bg-cartao);
-      border-top: 1px solid var(--borda);
-      display: flex;
-      justify-content: space-around;
-      padding: 10px 0;
-      z-index: 100;
-    }
-
-    .nav-btn {
-      background: none;
-      border: none;
-      color: var(--texto-secundario);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      font-size: 11px;
-      gap: 4px;
-      cursor: pointer;
-    }
-
-    .nav-btn.ativo {
-      color: #60a5fa;
-      font-weight: 600;
-    }
-
-    .nav-btn span.nav-icone {
-      font-size: 20px;
-    }
-
-    /* Texto bruto ocultável */
-    .texto-bruto-box {
-      font-family: monospace;
-      font-size: 11px;
-      color: #94a3b8;
-      background-color: #020617;
-      padding: 8px;
-      border-radius: 8px;
-      margin-top: 8px;
-      white-space: pre-wrap;
-      max-height: 120px;
-      overflow-y: auto;
-      display: none;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background: #0f172a; color: #f8fafc; padding-bottom: 85px; }
+    header { background: #1e293b; padding: 14px 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 18px; color: #38bdf8; }
+    .btn-topo { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; }
+    main { padding: 14px; max-width: 600px; margin: 0 auto; }
+    .tela { display: none; }
+    .tela.ativa { display: block; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+    .card h2 { font-size: 15px; color: #93c5fd; margin-bottom: 10px; }
+    .btn-camera { position: relative; background: #2563eb; color: white; padding: 16px; border-radius: 10px; text-align: center; font-weight: bold; margin-bottom: 10px; display: block; border: none; width: 100%; font-size: 15px; }
+    .btn-galeria { position: relative; background: #334155; color: #e2e8f0; padding: 12px; border-radius: 10px; text-align: center; font-weight: bold; margin-bottom: 12px; display: block; width: 100%; font-size: 13px; }
+    .btn-galeria input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; margin-top: 10px; }
+    input[type="text"], input[type="tel"] { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 14px; }
+    .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 12px; }
+    .btn-verde { background: #10b981; color: #022c22; }
+    .btn-azul { background: #3b82f6; color: white; }
+    .btn-cinza { background: #334155; color: #e2e8f0; }
+    .btn-vermelho { background: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 6px; font-size: 11px; margin-top: 6px; }
+    .item { background: #0f172a; border: 1px solid #334155; padding: 12px; border-radius: 10px; margin-top: 10px; }
+    .foto-perfil { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
+    .flex-row { display: flex; gap: 12px; align-items: center; }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 12px 0; }
+    .nav button { background: none; border: none; color: #94a3b8; font-size: 13px; font-weight: bold; }
+    .nav button.ativo { color: #38bdf8; }
+    #aviso-ia { display: none; background: #1e3a8a; color: #bfdbfe; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; text-align: center; }
+    #match-box { display: none; background: #064e3b; border: 1px solid #10b981; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+    #texto-lido-box { display: none; background: #020617; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 8px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
+    #box-camera-ao-vivo { display: none; background: #000; border-radius: 10px; padding: 10px; margin-bottom: 12px; text-align: center; border: 2px solid #38bdf8; }
+    #video-camera { width: 100%; max-height: 280px; border-radius: 8px; background: #111; object-fit: cover; }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="logo-area">
-      <h1>📦 Portaria Inteligente</h1>
-      <p>Leitura de Etiquetas & Protocolo</p>
-    </div>
-    <span class="badge-status">IA Ativa</span>
-  </header>
+<header>
+  <h1>Portaria IA</h1>
+  <button class="btn-topo" onclick="mudarAba('moradores')">+ Morador</button>
+</header>
 
-  <main>
-    <!-- TELA 1: RECEBER ENCOMENDA -->
-    <div id="tela-inicio" class="tela ativa">
-      <div class="card">
-        <div class="btn-camera-box">
-          <input type="file" accept="image/*" capture="environment" onchange="processarImagem(event)">
-          <span class="icone">📷</span>
-          <strong>Escanear Etiqueta</strong>
-          <small>Tire foto ou escolha da galeria</small>
-        </div>
+<main>
+  <!-- ABA 1: RECEBER E ENSINAR POR CORRECAO -->
+  <div id="aba-inicio" class="tela ativa">
+    <div class="card">
+      <button class="btn-camera" onclick="iniciarCameraAoVivo()">Abrir Camera Agora (Tirar Foto)</button>
 
-        <div id="status-ia">⏳ Lendo etiqueta com IA... Aguarde alguns segundos.</div>
-
-        <div class="card-titulo">👤 Dados Identificados</div>
-        
-        <div class="campo-grupo">
-          <label>Nome do Morador</label>
-          <input type="text" id="input-nome" placeholder="Ex: Renata Villela">
-        </div>
-
-        <div class="campo-grupo">
-          <label>Apartamento / Bloco (Confira o escrito à caneta)</label>
-          <input type="text" id="input-apto" placeholder="Ex: Apto 503">
-        </div>
-
-        <div class="campo-grupo">
-          <label>Transportadora / Loja</label>
-          <input type="text" id="input-transp" placeholder="Ex: Shopee, Magalu, Mercado Livre, J&T">
-        </div>
-
-        <div class="campo-grupo">
-          <label>Código de Rastreio / Pedido</label>
-          <input type="text" id="input-rastreio" placeholder="Identificado automaticamente">
-        </div>
-
-        <button class="btn btn-sucesso" onclick="salvarEncomenda()">✅ Salvar & Gerar PDF Diário</button>
-        
-        <button class="btn" style="background: transparent; color: #94a3b8; font-size: 12px; padding: 6px;" onclick="toggleTextoBruto()">
-          👁️ Ver texto bruto lido pela câmera
-        </button>
-        <div id="debug-ocr" class="texto-bruto-box">Nenhum texto lido ainda.</div>
-      </div>
-
-      <div class="card">
-        <div class="card-titulo">📋 Encomendas de Hoje (<span id="contador-hoje">0</span>)</div>
-        <div id="lista-encomendas">
-          <p style="font-size: 13px; color: var(--texto-secundario); text-align: center; padding: 10px;">
-            Nenhuma encomenda registrada hoje.
-          </p>
+      <div id="box-camera-ao-vivo">
+        <video id="video-camera" autoplay playsinline muted></video>
+        <canvas id="canvas-foto" style="display:none;"></canvas>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <button class="btn btn-verde" style="margin-top:0;" onclick="capturarFotoAoVivo()">Capturar Foto</button>
+          <button class="btn btn-vermelho" style="margin-top:0; font-size:14px; padding:12px;" onclick="pararCameraAoVivo()">Fechar</button>
         </div>
       </div>
+
+      <div class="btn-galeria">
+        Escolher Foto da Galeria
+        <input type="file" accept="image/*" onchange="escanearFotoArquivo(event)">
+      </div>
+
+      <div id="aviso-ia">Lendo etiqueta...</div>
+
+      <div id="match-box">
+        <div class="flex-row">
+          <img id="match-foto" class="foto-perfil" src="" alt="Foto">
+          <div>
+            <strong id="match-titulo" style="color: #6ee7b7; font-size: 14px;">Morador Encontrado!</strong>
+            <div id="match-desc" style="font-size: 12px; color: #d1fae5;"></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Dados Coletados (Corrija para a IA Aprender)</h2>
+      <div id="formulario-dinamico"></div>
+
+      <button class="btn btn-cinza" onclick="mudarAba('campos')">+ Adicionar Novo Campo de Coleta</button>
+      <button class="btn btn-verde" onclick="registrarEAtualizarIA()">Salvar Encomenda & Ensinar IA</button>
+
+      <button class="btn btn-cinza" style="font-size: 12px; padding: 8px;" onclick="alternarTextoBruto()">Ver Texto Lido pela Camera</button>
+      <div id="texto-lido-box"></div>
     </div>
 
-    <!-- TELA 2: TREINAR MODELOS DE ETIQUETA -->
-    <div id="tela-modelos" class="tela">
-      <div class="card">
-        <div class="card-titulo">🧠 Ensinar Novo Modelo de Etiqueta</div>
-        <p style="font-size: 13px; color: var(--texto-secundario); margin-bottom: 14px; line-height: 1.4;">
-          Se aparecer uma transportadora nova e a IA errar o nome, cadastre aqui a <strong>palavra-chave</strong> que aparece na etiqueta e o texto que vem <strong>antes do nome do morador</strong>.
-        </p>
-
-        <div class="campo-grupo">
-          <label>Nome da Transportadora / Loja</label>
-          <input type="text" id="mod-nome" placeholder="Ex: Loggi, Jadlog, Amazon, Correios">
-        </div>
-
-        <div class="campo-grupo">
-          <label>Palavra que identifica essa etiqueta (Gatilho)</label>
-          <input type="text" id="mod-gatilho" placeholder="Ex: LOGGI ou JADLOG">
-        </div>
-
-        <div class="campo-grupo">
-          <label>Texto que aparece logo ANTES do nome do morador</label>
-          <input type="text" id="mod-ancora-nome" placeholder="Ex: DESTINATÁRIO ou RECEBEDOR:">
-        </div>
-
-        <div class="campo-grupo">
-          <label>Texto que aparece antes do Apartamento (Opcional)</label>
-          <input type="text" id="mod-ancora-apto" placeholder="Ex: APTO ou COMPLEMENTO:">
-        </div>
-
-        <button class="btn btn-primario" onclick="salvarModelo()">💾 Salvar Modelo na Memória da IA</button>
-      </div>
-
-      <div class="card">
-        <div class="card-titulo">📚 Modelos Aprendidos pela IA</div>
-        <div id="lista-modelos"></div>
-      </div>
+    <div class="card">
+      <h2>Encomendas de Hoje</h2>
+      <div id="lista-encomendas"></div>
     </div>
-  </main>
+  </div>
 
-  <nav class="nav-inferior">
-    <button class="nav-btn ativo" id="nav-inicio" onclick="mudarTela('inicio')">
-      <span class="nav-icone">📦</span>
-      <span>Receber</span>
-    </button>
-    <button class="nav-btn" id="nav-modelos" onclick="mudarTela('modelos')">
-      <span class="nav-icone">🧠</span>
-      <span>Modelos de Etiqueta</span>
-    </button>
-  </nav>
+  <!-- ABA 2: MORADORES E FAMILIARES -->
+  <div id="aba-moradores" class="tela">
+    <div class="card">
+      <h2>Cadastrar Morador & Familia</h2>
+      <p style="font-size: 12px; color: #94a3b8;">A IA cruza qualquer nome cadastrado aqui com o texto das etiquetas.</p>
 
-  <script>
-    // Modelos pré-treinados baseados nas suas fotos reais (Magalu, Shopee, J&T, Mercado Livre)
-    const modelosPadrao = [
-      { nome: "Magalu Entregas", gatilho: "MAGALU", ancoraNome: "DESTINATÁRIO", ancoraApto: "APTO" },
-      { nome: "Shopee", gatilho: "SHOPEE", ancoraNome: "DESTINATÁRIO", ancoraApto: "Apto" },
-      { nome: "J&T Express / TikTok", gatilho: "J&T", ancoraNome: "DESTINATÁRIO", ancoraApto: "apt" },
-      { nome: "Mercado Livre", gatilho: "SBA6", ancoraNome: "NF:", ancoraApto: "Apt" }
-    ];
+      <label>Apartamento / Bloco</label>
+      <input type="text" id="cad-apto" placeholder="Ex: Apto 503">
 
-    let modelosSalvos = JSON.parse(localStorage.getItem('portaria_modelos')) || modelosPadrao;
-    let encomendasHoje = JSON.parse(localStorage.getItem('portaria_encomendas')) || [];
+      <label>Nome do Titular</label>
+      <input type="text" id="cad-nome" placeholder="Nome completo">
 
-    function mudarTela(tela) {
-      document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('ativo'));
-      
-      document.getElementById('tela-' + tela).classList.add('ativa');
-      document.getElementById('nav-' + tela).classList.add('ativo');
+      <label>WhatsApp (com DDD)</label>
+      <input type="tel" id="cad-whats" placeholder="Ex: 71999999999">
 
-      if (tela === 'modelos') renderizarModelos();
-      if (tela === 'inicio') renderizarEncomendas();
+      <label>Foto do Titular</label>
+      <input type="file" accept="image/*" onchange="processarFotoPerfil(event, 'prev-titular', -1)">
+      <img id="prev-titular" style="display:none; width:60px; height:60px; border-radius:8px; margin-top:6px; object-fit:cover;">
+
+      <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 10px;">
+        <strong style="font-size: 13px; color: #38bdf8;">Familiares / Moradores do Mesmo Apto</strong>
+        <div id="box-familiares"></div>
+        <button class="btn btn-cinza" onclick="novoFamiliar()">+ Adicionar Pessoa / Familiar</button>
+      </div>
+
+      <button class="btn btn-azul" onclick="salvarMoradorCompleto()">Salvar Cadastro</button>
+    </div>
+
+    <div class="card">
+      <h2>Base de Moradores (Memoria da IA)</h2>
+      <div id="lista-moradores"></div>
+    </div>
+  </div>
+
+  <!-- ABA 3: GERENCIAR CAMPOS E APRENDIZADO -->
+  <div id="aba-campos" class="tela">
+    <div class="card">
+      <h2>Adicionar Campo para IA Coletar</h2>
+      <p style="font-size: 12px; color: #94a3b8;">Crie campos extras (ex: Nota Fiscal, Loja, Peso) e defina uma palavra-chave opcional que aparece antes do dado na etiqueta.</p>
+
+      <label>Nome do Campo</label>
+      <input type="text" id="novo-campo-titulo" placeholder="Ex: Nota Fiscal">
+
+      <label>Palavra-Chave na Etiqueta (Gatilho)</label>
+      <input type="text" id="novo-campo-chave" placeholder="Ex: NF: ou Pedido:">
+
+      <button class="btn btn-azul" onclick="adicionarCampoColeta()">Adicionar Campo ao Formulario</button>
+      <div id="lista-campos-config"></div>
+    </div>
+
+    <div class="card">
+      <h2>Memoria Aprendida pela IA</h2>
+      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Palavras-chave que a IA ja aprendeu com suas correcoes:</p>
+      <div id="lista-memoria-ia"></div>
+    </div>
+  </div>
+</main>
+
+<nav class="nav">
+  <button id="btn-nav-inicio" class="ativo" onclick="mudarAba('inicio')">Receber</button>
+  <button id="btn-nav-moradores" onclick="mudarAba('moradores')">Moradores</button>
+  <button id="btn-nav-campos" onclick="mudarAba('campos')">Campos & IA</button>
+</nav>
+
+<script>
+  var camposBase = JSON.parse(localStorage.getItem('pia_campos') || '[{"id":"nome","titulo":"Nome do Morador","chave":"DESTINAT"},{"id":"apto","titulo":"Apartamento / Bloco","chave":"APTO"},{"id":"transp","titulo":"Transportadora","chave":""}]');
+  var moradores = JSON.parse(localStorage.getItem('pia_moradores') || '[]');
+  var encomendas = JSON.parse(localStorage.getItem('pia_encomendas') || '[]');
+  var memoriaIA = JSON.parse(localStorage.getItem('pia_memoria') || '[{"chave":"MAGALU","campo":"transp","valor":"Magalu Entregas"},{"chave":"SHOPEE","campo":"transp","valor":"Shopee"},{"chave":"SBA6","campo":"transp","valor":"Mercado Livre"},{"chave":"J&T","campo":"transp","valor":"J&T Express"}]');
+
+  var ultimoTextoLido = '';
+  var fotoTitularTemp = '';
+  var familiaresTemp = [];
+  var streamCamera = null;
+
+  function iniciarCameraAoVivo() {
+    var box = document.getElementById('box-camera-ao-vivo');
+    var video = document.getElementById('video-camera');
+    box.style.display = 'block';
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Este visualizador nao suporta camera ao vivo. Use o botao Escolher Foto da Galeria.');
+      box.style.display = 'none';
+      return;
     }
 
-    function toggleTextoBruto() {
-      const box = document.getElementById('debug-ocr');
-      box.style.display = box.style.display === 'none' || box.style.display === '' ? 'block' : 'none';
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      .then(function(stream) {
+        streamCamera = stream;
+        video.srcObject = stream;
+        video.play();
+      })
+      .catch(function() {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then(function(stream2) {
+            streamCamera = stream2;
+            video.srcObject = stream2;
+            video.play();
+          })
+          .catch(function() {
+            alert('Permissao negada ou bloqueada pelo editor. Use o botao Escolher Foto da Galeria.');
+            box.style.display = 'none';
+          });
+      });
+  }
+
+  function capturarFotoAoVivo() {
+    var video = document.getElementById('video-camera');
+    var canvas = document.getElementById('canvas-foto');
+    if (!video.videoWidth) {
+      alert('Aguarde a imagem da camera carregar antes de capturar.');
+      return;
+    }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    var imagemData = canvas.toDataURL('image/jpeg', 0.85);
+    pararCameraAoVivo();
+    processarOCR(imagemData);
+  }
+
+  function pararCameraAoVivo() {
+    if (streamCamera) {
+      var tracks = streamCamera.getTracks();
+      for (var i = 0; i < tracks.length; i++) {
+        tracks[i].stop();
+      }
+      streamCamera = null;
+    }
+    document.getElementById('box-camera-ao-vivo').style.display = 'none';
+  }
+
+  function mudarAba(nome) {
+    pararCameraAoVivo();
+    var telas = document.querySelectorAll('.tela');
+    for (var i = 0; i < telas.length; i++) {
+      telas[i].classList.remove('ativa');
+    }
+    var btns = document.querySelectorAll('.nav button');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].classList.remove('ativo');
+    }
+    document.getElementById('aba-' + nome).classList.add('ativa');
+    var ativo = document.getElementById('btn-nav-' + nome);
+    if (ativo) ativo.classList.add('ativo');
+    renderizarTudo();
+  }
+
+  function alternarTextoBruto() {
+    var box = document.getElementById('texto-lido-box');
+    box.style.display = (box.style.display === 'block') ? 'none' : 'block';
+  }
+
+  function renderizarFormulario() {
+    var container = document.getElementById('formulario-dinamico');
+    var html = '';
+    for (var i = 0; i < camposBase.length; i++) {
+      var c = camposBase[i];
+      html += '<label>' + c.titulo + '</label>';
+      html += '<input type="text" id="campo-valor-' + c.id + '" placeholder="Digite ou escaneie...">';
+    }
+    container.innerHTML = html;
+  }
+
+  function adicionarCampoColeta() {
+    var titulo = document.getElementById('novo-campo-titulo').value.trim();
+    var chave = document.getElementById('novo-campo-chave').value.trim();
+    if (!titulo) {
+      alert('Digite o nome do campo.');
+      return;
+    }
+    var id = 'campo_' + Date.now();
+    camposBase.push({ id: id, titulo: titulo, chave: chave });
+    localStorage.setItem('pia_campos', JSON.stringify(camposBase));
+    document.getElementById('novo-campo-titulo').value = '';
+    document.getElementById('novo-campo-chave').value = '';
+    renderizarTudo();
+    alert('Campo adicionado!');
+  }
+
+  function removerCampo(idx) {
+    if (idx < 3) {
+      alert('Os 3 campos principais nao podem ser excluidos.');
+      return;
+    }
+    camposBase.splice(idx, 1);
+    localStorage.setItem('pia_campos', JSON.stringify(camposBase));
+    renderizarTudo();
+  }
+
+  function processarFotoPerfil(event, imgId, famIdx) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        canvas.width = 140;
+        canvas.height = 140;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 140, 140);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        if (famIdx === -1) {
+          fotoTitularTemp = dataUrl;
+          var el = document.getElementById(imgId);
+          el.src = dataUrl;
+          el.style.display = 'block';
+        } else {
+          familiaresTemp[famIdx].foto = dataUrl;
+          renderizarFamiliaresTemp();
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function novoFamiliar() {
+    familiaresTemp.push({ nome: '', parentesco: '', foto: '' });
+    renderizarFamiliaresTemp();
+  }
+
+  function renderizarFamiliaresTemp() {
+    var box = document.getElementById('box-familiares');
+    var html = '';
+    for (var i = 0; i < familiaresTemp.length; i++) {
+      var f = familiaresTemp[i];
+      html += '<div class="item">';
+      html += '<label>Nome da Pessoa ' + (i + 1) + '</label>';
+      html += '<input type="text" value="' + f.nome + '" oninput="familiaresTemp[' + i + '].nome=this.value" placeholder="Nome completo">';
+      html += '<label>Parentesco / Relacao</label>';
+      html += '<input type="text" value="' + f.parentesco + '" oninput="familiaresTemp[' + i + '].parentesco=this.value" placeholder="Ex: Esposa, Filho, Morador">';
+      html += '<label>Foto</label>';
+      html += '<input type="file" accept="image/*" onchange="processarFotoPerfil(event, '', ' + i + ')">';
+      if (f.foto) html += '<img src="' + f.foto + '" style="width:45px;height:45px;border-radius:6px;margin-top:6px;">';
+      html += '</div>';
+    }
+    box.innerHTML = html;
+  }
+
+  function salvarMoradorCompleto() {
+    var apto = document.getElementById('cad-apto').value.trim();
+    var nome = document.getElementById('cad-nome').value.trim();
+    var whats = document.getElementById('cad-whats').value.trim();
+    if (!apto || !nome) {
+      alert('Preencha o Apartamento e o Nome.');
+      return;
+    }
+    moradores.unshift({
+      apto: apto,
+      nome: nome,
+      whats: whats,
+      foto: fotoTitularTemp,
+      familiares: familiaresTemp
+    });
+    localStorage.setItem('pia_moradores', JSON.stringify(moradores));
+    document.getElementById('cad-apto').value = '';
+    document.getElementById('cad-nome').value = '';
+    document.getElementById('cad-whats').value = '';
+    document.getElementById('prev-titular').style.display = 'none';
+    fotoTitularTemp = '';
+    familiaresTemp = [];
+    renderizarFamiliaresTemp();
+    renderizarTudo();
+    alert('Morador e familiares salvos na memoria da IA!');
+  }
+
+  function escanearFotoArquivo(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    processarOCR(file);
+  }
+
+  function processarOCR(fonteImagem) {
+    var aviso = document.getElementById('aviso-ia');
+    aviso.style.display = 'block';
+    aviso.textContent = 'Lendo imagem e consultando memoria da IA...';
+
+    Tesseract.recognize(fonteImagem, 'por').then(function(res) {
+      ultimoTextoLido = res.data.text;
+      document.getElementById('texto-lido-box').textContent = ultimoTextoLido;
+      aplicarInteligencia(ultimoTextoLido);
+      aviso.textContent = 'Leitura concluida! Corrija se precisar antes de salvar para a IA aprender.';
+    }).catch(function() {
+      aviso.textContent = 'Nao foi possivel ler a imagem. Tente uma foto mais nitida.';
+    });
+  }
+
+  function aplicarInteligencia(texto) {
+    var upper = texto.toUpperCase();
+    var linhas = texto.split(String.fromCharCode(10));
+
+    for (var i = 0; i < camposBase.length; i++) {
+      var el = document.getElementById('campo-valor-' + camposBase[i].id);
+      if (el) el.value = '';
     }
 
-    // Leitura da Imagem com OCR + Regras Inteligentes
-    async function processarImagem(event) {
-      const arquivo = event.target.files[0];
-      if (!arquivo) return;
-
-      const statusBox = document.getElementById('status-ia');
-      statusBox.style.display = 'block';
-      statusBox.textContent = '⏳ Analisando etiqueta com IA... Mantenha a tela aberta.';
-
-      try {
-        const resultado = await Tesseract.recognize(arquivo, 'por');
-        const texto = resultado.data.text;
-        document.getElementById('debug-ocr').textContent = texto;
-
-        extrairDadosInteligentes(texto);
-        statusBox.textContent = '✅ Leitura concluída! Confira os dados abaixo.';
-        statusBox.style.borderColor = '#10b981';
-        statusBox.style.color = '#34d399';
-      } catch (erro) {
-        statusBox.textContent = '❌ Erro ao ler imagem. Tente tirar uma foto mais próxima e nítida.';
+    for (var m = 0; m < memoriaIA.length; m++) {
+      var reg = memoriaIA[m];
+      if (upper.indexOf(reg.chave.toUpperCase()) !== -1) {
+        var inputAlvo = document.getElementById('campo-valor-' + reg.campo);
+        if (inputAlvo && !inputAlvo.value) {
+          inputAlvo.value = reg.valor;
+        }
       }
     }
 
-    function extrairDadosInteligentes(textoBruto) {
-      const linhas = textoBruto.split('\n').map(l => l.trim()).filter(l => l.length > 1);
-      const textoMaiusculo = textoBruto.toUpperCase();
+    for (var c = 0; c < camposBase.length; c++) {
+      var campo = camposBase[c];
+      var inputCampo = document.getElementById('campo-valor-' + campo.id);
+      if (campo.chave && inputCampo && !inputCampo.value) {
+        var gatilhoUpper = campo.chave.toUpperCase();
+        for (var l = 0; l < linhas.length; l++) {
+          var linhaUpper = linhas[l].toUpperCase();
+          var pos = linhaUpper.indexOf(gatilhoUpper);
+          if (pos !== -1) {
+            var resto = linhas[l].substring(pos + campo.chave.length).replace(/[:\-]/g, '').trim();
+            if (resto.length > 1) {
+              inputCampo.value = resto;
+            } else if (linhas[l + 1]) {
+              inputCampo.value = linhas[l + 1].trim();
+            }
+            break;
+          }
+        }
+      }
+    }
 
-      let transpEncontrada = "Transportadora Diversa";
-      let nomeEncontrado = "";
-      let aptoEncontrado = "";
-      let rastreioEncontrado = "";
+    var inputApto = document.getElementById('campo-valor-apto');
+    if (inputApto && !inputApto.value) {
+      var matchApto = upper.match(/(APTO|APT|BLOCO)\s*([0-9A-Z]+)/);
+      if (matchApto) inputApto.value = 'Apto ' + matchApto[2];
+    }
 
-      // 1. Identifica a transportadora pelos modelos cadastrados
-      let modeloAtivo = null;
-      for (let mod of modelosSalvos) {
-        if (textoMaiusculo.includes(mod.gatilho.toUpperCase())) {
-          transpEncontrada = mod.nome;
-          modeloAtivo = mod;
-          break;
+    var matchBox = document.getElementById('match-box');
+    matchBox.style.display = 'none';
+
+    for (var k = 0; k < moradores.length; k++) {
+      var mor = moradores[k];
+      var achou = false;
+      var fotoExibir = mor.foto;
+      var nomeExibir = mor.nome;
+
+      if (upper.indexOf(mor.nome.toUpperCase()) !== -1) {
+        achou = true;
+      } else if (mor.familiares) {
+        for (var f = 0; f < mor.familiares.length; f++) {
+          var fam = mor.familiares[f];
+          if (fam.nome && upper.indexOf(fam.nome.toUpperCase()) !== -1) {
+            achou = true;
+            nomeExibir = fam.nome + ' (' + fam.parentesco + ' - ' + mor.nome + ')';
+            if (fam.foto) fotoExibir = fam.foto;
+            break;
+          }
         }
       }
 
-      // 2. Busca o Nome do Morador usando a âncora do modelo ou padrão "DESTINATÁRIO"
-      const ancoraBusca = modeloAtivo ? modeloAtivo.ancoraNome.toUpperCase() : "DESTINAT";
-      for (let i = 0; i < linhas.length; i++) {
-        if (linhas[i].toUpperCase().includes(ancoraBusca)) {
-          // O nome geralmente está na linha logo abaixo de DESTINATÁRIO
-          if (linhas[i + 1]) {
-            let candidato = linhas[i + 1].replace(/[^a-zA-ZÀ-ÿ\s]/g, '').trim();
-            if (candidato.length > 3) {
-              nomeEncontrado = candidato;
+      if (achou) {
+        var inNome = document.getElementById('campo-valor-nome');
+        var inApto = document.getElementById('campo-valor-apto');
+        if (inNome) inNome.value = nomeExibir;
+        if (inApto) inApto.value = mor.apto;
+
+        matchBox.style.display = 'block';
+        document.getElementById('match-titulo').textContent = 'Morador Reconhecido: ' + mor.apto;
+        document.getElementById('match-desc').textContent = nomeExibir;
+        var imgEl = document.getElementById('match-foto');
+        if (fotoExibir) {
+          imgEl.src = fotoExibir;
+          imgEl.style.display = 'block';
+        } else {
+          imgEl.style.display = 'none';
+        }
+        break;
+      }
+    }
+  }
+
+  function registrarEAtualizarIA() {
+    var dadosSalvos = {};
+    for (var i = 0; i < camposBase.length; i++) {
+      var id = camposBase[i].id;
+      var val = document.getElementById('campo-valor-' + id).value.trim();
+      dadosSalvos[camposBase[i].titulo] = val;
+
+      if (ultimoTextoLido && val.length > 2) {
+        var palavras = ultimoTextoLido.toUpperCase().split(/\s+/);
+        for (var p = 0; p < palavras.length; p++) {
+          var pal = palavras[p].replace(/[^A-Z0-9]/g, '');
+          if (pal.length >= 5 && pal !== 'DESTINATARIO' && pal !== 'REMETENTE' && pal !== 'SALVADOR' && pal !== 'BAHIA') {
+            var jaExiste = false;
+            for (var m = 0; m < memoriaIA.length; m++) {
+              if (memoriaIA[m].chave === pal && memoriaIA[m].campo === id) {
+                memoriaIA[m].valor = val;
+                jaExiste = true;
+                break;
+              }
+            }
+            if (!jaExiste && id === 'transp') {
+              memoriaIA.unshift({ chave: pal, campo: id, valor: val });
               break;
             }
           }
         }
       }
+    }
 
-      // 3. Busca o Apartamento (procura por APTO, APT, BLOCO ou números padrão)
-      const regexApto = /(?:APTO|APT|APARTAMENTO|BLOCO|BL)[\s.:-]*([0-9A-Z-]+)/i;
-      const matchApto = textoBruto.match(regexApto);
-      if (matchApto && matchApto[1]) {
-        aptoEncontrado = "Apto " + matchApto[1];
+    localStorage.setItem('pia_memoria', JSON.stringify(memoriaIA));
+
+    var hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    encomendas.unshift({ hora: hora, dados: dadosSalvos });
+    localStorage.setItem('pia_encomendas', JSON.stringify(encomendas));
+
+    ultimoTextoLido = '';
+    document.getElementById('match-box').style.display = 'none';
+    document.getElementById('aviso-ia').style.display = 'none';
+    renderizarTudo();
+    gerarPDFRelatorio();
+    alert('Encomenda salva e aprendizado atualizado!');
+  }
+
+  function gerarPDFRelatorio() {
+    if (!window.jspdf) return;
+    var doc = new window.jspdf.jsPDF();
+    var data = new Date().toLocaleDateString('pt-BR');
+    doc.setFontSize(14);
+    doc.text('Relatorio Portaria IA - ' + data, 14, 18);
+    doc.setFontSize(10);
+    var y = 30;
+    for (var i = 0; i < encomendas.length; i++) {
+      var enc = encomendas[i];
+      var resumo = (i + 1) + '. [' + enc.hora + '] ';
+      for (var chave in enc.dados) {
+        if (enc.dados[chave]) resumo += chave + ': ' + enc.dados[chave] + ' | ';
       }
-
-      // 4. Busca Código de Rastreio (Shopee BR..., Pedido..., etc.)
-      const regexRastreio = /(?:BR[0-9]{10,}[A-Z0-9]*|Pedido[:\s]*([0-9A-Z]+))/i;
-      const matchRastreio = textoBruto.match(regexRastreio);
-      if (matchRastreio) {
-        rastreioEncontrado = matchRastreio[0].replace(/Pedido[:\s]*/i, '').trim();
-      }
-
-      document.getElementById('input-nome').value = nomeEncontrado;
-      document.getElementById('input-apto').value = aptoEncontrado;
-      document.getElementById('input-transp').value = transpEncontrada;
-      document.getElementById('input-rastreio').value = rastreioEncontrado;
+      doc.text(resumo, 14, y);
+      y += 8;
+      if (y > 280) { doc.addPage(); y = 20; }
     }
+    doc.save('Portaria_' + data.replace(/\//g, '-') + '.pdf');
+  }
 
-    // Salvar Novo Modelo de Etiqueta
-    function salvarModelo() {
-      const nome = document.getElementById('mod-nome').value.trim();
-      const gatilho = document.getElementById('mod-gatilho').value.trim();
-      const ancoraNome = document.getElementById('mod-ancora-nome').value.trim() || "DESTINATÁRIO";
-      const ancoraApto = document.getElementById('mod-ancora-apto').value.trim() || "APTO";
+  function renderizarTudo() {
+    renderizarFormulario();
 
-      if (!nome || !gatilho) {
-        alert("Preencha o Nome da Transportadora e a Palavra-Chave (Gatilho).");
-        return;
-      }
-
-      modelosSalvos.unshift({ nome, gatilho, ancoraNome, ancoraApto });
-      localStorage.setItem('portaria_modelos', JSON.stringify(modelosSalvos));
-
-      document.getElementById('mod-nome').value = '';
-      document.getElementById('mod-gatilho').value = '';
-      document.getElementById('mod-ancora-nome').value = '';
-      document.getElementById('mod-ancora-apto').value = '';
-
-      alert("✅ Modelo aprendido! Da próxima vez que escanear essa etiqueta, a IA vai usar essa regra.");
-      renderizarModelos();
-    }
-
-    function removerModelo(index) {
-      modelosSalvos.splice(index, 1);
-      localStorage.setItem('portaria_modelos', JSON.stringify(modelosSalvos));
-      renderizarModelos();
-    }
-
-    function renderizarModelos() {
-      const container = document.getElementById('lista-modelos');
-      container.innerHTML = modelosSalvos.map((m, idx) => `
-        <div class="item-lista">
-          <div class="item-topo">
-            <strong>${m.nome}</strong>
-            <button onclick="removerModelo(${idx})" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:11px;">Excluir</button>
-          </div>
-          <div style="font-size: 12px; color: #94a3b8;">
-            Gatilho: <code>${m.gatilho}</code> | Busca nome após: <code>${m.ancoraNome}</code>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Salvar Encomenda e Gerar PDF
-    function salvarEncomenda() {
-      const nome = document.getElementById('input-nome').value.trim() || "Morador não identificado";
-      const apto = document.getElementById('input-apto').value.trim() || "S/N";
-      const transp = document.getElementById('input-transp').value.trim() || "Diversa";
-      const rastreio = document.getElementById('input-rastreio').value.trim() || "-";
-      const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      const registro = { nome, apto, transp, rastreio, hora };
-      encomendasHoje.unshift(registro);
-      localStorage.setItem('portaria_encomendas', JSON.stringify(encomendasHoje));
-
-      // Limpa campos
-      document.getElementById('input-nome').value = '';
-      document.getElementById('input-apto').value = '';
-      document.getElementById('input-rastreio').value = '';
-
-      renderizarEncomendas();
-      gerarPDFDiario();
-    }
-
-    function renderizarEncomendas() {
-      document.getElementById('contador-hoje').textContent = encomendasHoje.length;
-      const lista = document.getElementById('lista-encomendas');
-      
-      if (encomendasHoje.length === 0) return;
-
-      lista.innerHTML = encomendasHoje.map(item => {
-        const msgWhats = encodeURIComponent(`Olá ${item.nome} (${item.apto})! Chegou uma encomenda (${item.transp}) para você na portaria às ${item.hora}.`);
-        return `
-          <div class="item-lista">
-            <div class="item-topo">
-              <span class="tag-apto">${item.apto}</span>
-              <span class="tag-transp">${item.transp} • ${item.hora}</span>
-            </div>
-            <div style="font-size: 15px; font-weight: 600; margin-bottom: 4px;">${item.nome}</div>
-            <div style="font-size: 12px; color: #94a3b8;">Rastreio: ${item.rastreio}</div>
-            <a href="https://wa.me/?text=${msgWhats}" target="_blank" class="btn-whatsapp">
-              📲 Avisar no WhatsApp
-            </a>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function gerarPDFDiario() {
-      if (!window.jspdf) return;
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const dataHoje = new Date().toLocaleDateString('pt-BR');
-
-      doc.setFontSize(16);
-      doc.text(`Relatório de Encomendas - Portaria (${dataHoje})`, 14, 20);
-      doc.setFontSize(11);
-
-      let y = 32;
-      encomendasHoje.forEach((enc, index) => {
-        const linha = `${index + 1}. [${enc.hora}] ${enc.apto} - ${enc.nome} (${enc.transp}) | Rastreio: ${enc.rastreio}`;
-        doc.text(linha, 14, y);
-        y += 8;
-        if (y > 280) {
-          doc.addPage();
-          y = 20;
+    var divEnc = document.getElementById('lista-encomendas');
+    var htmlEnc = '';
+    for (var i = 0; i < encomendas.length; i++) {
+      var enc = encomendas[i];
+      var textoZap = 'Ola! Chegou uma encomenda na portaria as ' + enc.hora + '. ';
+      htmlEnc += '<div class="item"><small style="color:#38bdf8;">' + enc.hora + '</small><br>';
+      for (var k in enc.dados) {
+        if (enc.dados[k]) {
+          htmlEnc += '<strong>' + k + ':</strong> ' + enc.dados[k] + '<br>';
+          textoZap += k + ': ' + enc.dados[k] + ' | ';
         }
-      });
-
-      doc.save(`Portaria_Encomendas_${dataHoje.replace(/\//g, '-')}.pdf`);
+      }
+      htmlEnc += '<a href="https://wa.me/?text=' + encodeURIComponent(textoZap) + '" target="_blank" style="display:inline-block;margin-top:6px;background:#25d366;color:#052e16;padding:6px 10px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold;">Avisar WhatsApp</a>';
+      htmlEnc += '</div>';
     }
+    divEnc.innerHTML = htmlEnc || '<p style="font-size:13px;color:#94a3b8;">Nenhum registro hoje.</p>';
 
-    // Inicializa listas ao abrir
-    renderizarEncomendas();
-    renderizarModelos();
-  </script>
+    var divMor = document.getElementById('lista-moradores');
+    var htmlMor = '';
+    for (var m = 0; m < moradores.length; m++) {
+      var mor = moradores[m];
+      htmlMor += '<div class="item flex-row">';
+      if (mor.foto) htmlMor += '<img src="' + mor.foto + '" class="foto-perfil">';
+      htmlMor += '<div><strong>' + mor.apto + ' - ' + mor.nome + '</strong><br>';
+      htmlMor += '<small style="color:#94a3b8;">Familiares cadastrados: ' + (mor.familiares ? mor.familiares.length : 0) + '</small></div>';
+      htmlMor += '</div>';
+    }
+    divMor.innerHTML = htmlMor || '<p style="font-size:13px;color:#94a3b8;">Nenhum morador cadastrado.</p>';
+
+    var divCampos = document.getElementById('lista-campos-config');
+    var htmlCampos = '';
+    for (var c = 0; c < camposBase.length; c++) {
+      htmlCampos += '<div class="item"><strong>' + camposBase[c].titulo + '</strong> <small>(Gatilho: ' + (camposBase[c].chave || 'Livre') + ')</small>';
+      if (c >= 3) htmlCampos += '<br><button class="btn-vermelho" onclick="removerCampo(' + c + ')">Remover</button>';
+      htmlCampos += '</div>';
+    }
+    divCampos.innerHTML = htmlCampos;
+
+    var divMem = document.getElementById('lista-memoria-ia');
+    var htmlMem = '';
+    for (var x = 0; x < memoriaIA.length; x++) {
+      htmlMem += '<div class="item"><small>Se ler <strong>' + memoriaIA[x].chave + '</strong> -> preenche <strong>' + memoriaIA[x].valor + '</strong></small></div>';
+    }
+    divMem.innerHTML = htmlMem;
+  }
+
+  renderizarTudo();
+</script>
 </body>
 </html>
