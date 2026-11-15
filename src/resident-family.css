@@ -1,0 +1,148 @@
+/* Resident and family photo fields are for visual reference only; OCR matching uses text names. */
+.resident-photo-box,
+.family-section,
+.family-member-card {
+  margin-top: 16px;
+}
+
+.resident-photo-box,
+.family-member-card {
+  padding: 14px;
+  border: 1px solid #29394e;
+  border-radius: 14px;
+  background: #0e1929;
+}
+
+.photo-field-label {
+  margin-top: 0;
+}
+
+.resident-photo-preview,
+.resident-photo-empty {
+  display: block;
+  width: 112px;
+  height: 112px;
+  margin-top: 10px;
+  border: 1px solid #34445a;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.resident-photo-empty,
+.family-photo-placeholder {
+  display: grid;
+  place-items: center;
+  background: #172945;
+  color: #93a4ba;
+  font-size: .75rem;
+}
+
+.family-section {
+  padding-top: 16px;
+  border-top: 1px solid #29394e;
+}
+
+.family-heading {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.family-heading h3 {
+  margin: 0;
+  color: #c6dcff;
+}
+
+.family-member-card + .family-member-card {
+  margin-top: 12px;
+}
+
+.family-member-header,
+.family-photo-row,
+.resident-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.family-member-header {
+  justify-content: space-between;
+}
+
+.family-member-header h4 {
+  margin: 0;
+  color: #e8edf5;
+  font-size: .88rem;
+}
+
+.family-photo-row {
+  margin-top: 10px;
+}
+
+.upload-photo-button {
+  position: relative;
+  display: inline-flex;
+  min-width: 90px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #26364d;
+  color: #eff6ff;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.upload-photo-button input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.family-photo-preview,
+.family-photo-placeholder {
+  width: 72px;
+  height: 72px;
+  border: 1px solid #34445a;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.resident-card-header h3,
+.resident-card-header p {
+  margin: 0;
+}
+
+.resident-avatar,
+.empty-avatar {
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.empty-avatar {
+  display: grid;
+  place-items: center;
+  background: #233856;
+  color: #b7d4ff;
+  font-weight: 700;
+}
+
+@media (max-width: 420px) {
+  .family-member-header {
+    align-items: flex-start;
+  }
+
+  .resident-photo-preview,
+  .resident-photo-empty {
+    width: 96px;
+    height: 96px;
+  }
+}
