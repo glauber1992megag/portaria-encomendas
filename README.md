@@ -23,3 +23,20 @@ Aplicativo móvel para registrar o recebimento e a retirada de encomendas em por
 ```bash
 npm install
 npm run dev
+```
+
+## Gerar os arquivos web e sincronizar Android
+```bash
+npm run build
+npx cap add android   # somente na primeira configuração, se android/ ainda não existir
+npx cap sync android
+npx cap open android
+```
+
+No Android Studio, gere um APK de teste pelo menu **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+
+## GitHub Actions
+O workflow `.github/workflows/build-apk.yml` compila um APK de depuração ao enviar alterações para `main`, `master` ou `principal`, ou quando executado manualmente. Após a execução terminar com sucesso, baixe `portaria-encomendas-debug-apk` na seção **Artifacts** da execução do workflow.
+
+## Dados e conectividade
+Os cadastros e registros são guardados no armazenamento local do app. Exporte PDFs periodicamente como cópias. O OCR em português pode precisar baixar os dados de idioma na primeira utilização e, por isso, requer internet nessa etapa; não desinstale o app nem limpe os dados sem exportar uma cópia dos registros.
