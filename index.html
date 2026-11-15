@@ -1,116 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:;" />
-  <title>Portaria Inteligente</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-</head>
-<body>
-  <header>
-    <h1>Portaria Inteligente</h1>
-    <button id="open-residents" class="btn-topo" type="button">+ Morador</button>
-  </header>
-
-  <main>
-    <section id="screen-desk" class="screen shown">
-      <div class="card">
-        <h2>Receber encomenda</h2>
-        <div class="actions">
-          <button id="open-camera" class="camera-btn" type="button">Abrir câmera</button>
-          <label class="upload-box">
-            <span>Escolher foto</span>
-            <input id="label-photo" type="file" accept="image/*" />
-          </label>
-        </div>
-
-        <div id="ocr-status" class="notice info">
-          Tire ou escolha uma foto da etiqueta para preencher os dados automaticamente.
-        </div>
-
-        <div id="resident-match" class="match hidden"></div>
-
-        <div id="parcel-fields"></div>
-
-        <button id="save-parcel" class="button full green" type="button">Registrar recebimento</button>
-      </div>
-
-      <div class="card">
-        <h2>Encomendas de hoje</h2>
-        <div id="parcel-list"></div>
-      </div>
-    </section>
-
-    <section id="screen-residents" class="screen">
-      <div class="card">
-        <h2 id="resident-form-title">Cadastrar morador</h2>
-        <input id="resident-index" type="hidden" value="-1" />
-
-        <label>Apartamento / bloco</label>
-        <input id="resident-apartment" type="text" placeholder="Ex.: Apto 503" />
-
-        <label>Nome do morador principal</label>
-        <input id="resident-name" type="text" placeholder="Nome completo" />
-
-        <label>WhatsApp com DDD</label>
-        <input id="resident-phone" type="tel" placeholder="Ex.: 71999999999" />
-
-        <label>Foto do morador</label>
-        <input id="resident-photo" type="file" accept="image/*" />
-        <img id="resident-preview" alt="Foto do morador" hidden />
-
-        <div class="family-block">
-          <strong>Familiares / moradores do mesmo apartamento</strong>
-          <div id="family-list"></div>
-          <button id="add-family" class="button full dark" type="button">+ Adicionar familiar</button>
-        </div>
-
-        <button id="save-resident" class="button full blue" type="button">Salvar cadastro</button>
-      </div>
-
-      <div class="card">
-        <h2>Moradores cadastrados</h2>
-        <div id="resident-list"></div>
-      </div>
-    </section>
-
-    <section id="screen-settings" class="screen">
-      <div class="card">
-        <h2>Campos do formulário</h2>
-        <label>Nome do novo campo</label>
-        <input id="new-field-title" type="text" placeholder="Ex.: Loja ou Nota Fiscal" />
-        <label>Palavra-chave na etiqueta (opcional)</label>
-        <input id="new-field-keyword" type="text" placeholder="Ex.: NF:" />
-        <button id="add-field" class="button full blue" type="button">Adicionar campo</button>
-        <div id="field-settings"></div>
-      </div>
-
-      <div class="card">
-        <h2>Memória da IA</h2>
-        <p class="small-note">A IA aprende com as correções feitas antes do salvamento. Isso ajuda a melhorar futuras leituras.</p>
-        <div id="ai-memory"></div>
-      </div>
-    </section>
-
-    <section id="screen-reports" class="screen">
-      <div class="card">
-        <h2>Relatórios e backup em PDF</h2>
-        <p class="small-note">Cada dia gera um arquivo separado. Exportações ficam salvas no dispositivo.</p>
-        <div id="report-list"></div>
-      </div>
-    </section>
-  </main>
-
-  <nav class="navigation" aria-label="Menu principal">
-    <button id="nav-desk" class="selected" type="button">Portaria</button>
-    <button id="nav-residents" type="button">Moradores</button>
-    <button id="nav-settings" type="button">Campos & IA</button>
-    <button id="nav-reports" type="button">Relatórios</button>
-  </nav>
-
-  <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="description" content="Aplicativo móvel para controle de encomendas em portarias." />
+    <title>Portaria Encomendas</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
