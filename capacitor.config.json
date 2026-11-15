@@ -1,6 +1,9 @@
 {
-  "appId": "com.portaria.inteligente",
-  "appName": "Portaria Inteligente",
-  "webDir": "www",
-  "bundledWebRuntime": false
+  "appId": "com.portaria.encomendas",
+  "appName": "Portaria Encomendas",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
 }
