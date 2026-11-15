@@ -1,12 +1,392 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portaria Encomendas</title>
-  </head>
-  <body class="bg-gray-900 text-gray-100">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Portaria Inteligente Pro</title>
+  <!-- Biblioteca OCR gratuita que roda 100% offline no celular -->
+  <script src="https://jsdelivr.net"></script>
+  <!-- Biblioteca para gerar PDF -->
+  <script src="https://cloudflare.com"></script>
+  <style>
+    :root {
+      --bg-fundo: #0f172a;
+      --bg-cartao: #1e293b;
+      --bg-input: #0f172a;
+      --cor-primaria: #3b82f6;
+      --cor-sucesso: #10b981;
+      --cor-alerta: #f59e0b;
+      --texto-principal: #f8fafc;
+      --texto-secundario: #94a3b8;
+      --borda: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-fundo);
+      color: var(--texto-principal);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* Cabeçalho moderno */
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      padding: 20px 16px;
+      border-bottom: 1px solid var(--borda);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-area h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #60a5fa;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-area p {
+      font-size: 12px;
+      color: var(--texto-secundario);
+      margin-top: 2px;
+    }
+
+    .badge-status {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Container Principal */
+    main {
+      padding: 16px;
+      flex: 1;
+      max-width: 600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .tela {
+      display: none;
+    }
+
+    .tela.ativa {
+      display: block;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cartões */
+    .card {
+      background-color: var(--bg-cartao);
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-titulo {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--texto-principal);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Botão Gigante de Câmera */
+    .btn-camera-box {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      border-radius: 14px;
+      padding: 22px;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+      margin-bottom: 12px;
+    }
+
+    .btn-camera-box input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .btn-camera-box span.icone {
+      font-size: 32px;
+      margin-bottom: 6px;
+    }
+
+    .btn-camera-box strong {
+      font-size: 16px;
+      color: white;
+    }
+
+    .btn-camera-box small {
+      font-size: 12px;
+      color: #bfdbfe;
+      margin-top: 2px;
+    }
+
+    /* Barra de Progresso IA */
+    #status-ia {
+      display: none;
+      background-color: rgba(59, 130, 246, 0.15);
+      border: 1px solid #3b82f6;
+      color: #93c5fd;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    /* Formulários */
+    .campo-grupo {
+      margin-bottom: 12px;
+    }
+
+    .campo-grupo label {
+      display: block;
+      font-size: 12px;
+      color: var(--texto-secundario);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    input[type="text"], select, textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background-color: var(--bg-input);
+      border: 1px solid var(--borda);
+      border-radius: 10px;
+      color: var(--texto-principal);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, select:focus, textarea:focus {
+      border-color: var(--cor-primaria);
+    }
+
+    /* Botões de Ação */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-sucesso {
+      background-color: var(--cor-sucesso);
+      color: #064e3b;
+    }
+
+    .btn-primario {
+      background-color: var(--cor-primaria);
+      color: white;
+    }
+
+    .btn-whatsapp {
+      background-color: #25d366;
+      color: #052e16;
+      padding: 8px 12px;
+      font-size: 13px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    /* Lista de Encomendas e Modelos */
+    .item-lista {
+      background-color: var(--bg-input);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .item-topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .tag-apto {
+      background-color: #3b82f6;
+      color: white;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .tag-transp {
+      font-size: 11px;
+      color: var(--texto-secundario);
+      background-color: #1e293b;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    /* Menu Inferior Fixo */
+    .nav-inferior {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: var(--bg-cartao);
+      border-top: 1px solid var(--borda);
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      color: var(--texto-secundario);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 11px;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .nav-btn.ativo {
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    .nav-btn span.nav-icone {
+      font-size: 20px;
+    }
+
+    /* Texto bruto ocultável */
+    .texto-bruto-box {
+      font-family: monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      background-color: #020617;
+      padding: 8px;
+      border-radius: 8px;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      max-height: 120px;
+      overflow-y: auto;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-area">
+      <h1>📦 Portaria Inteligente</h1>
+      <p>Leitura de Etiquetas & Protocolo</p>
+    </div>
+    <span class="badge-status">IA Ativa</span>
+  </header>
+
+  <main>
+    <!-- TELA 1: RECEBER ENCOMENDA -->
+    <div id="tela-inicio" class="tela ativa">
+      <div class="card">
+        <div class="btn-camera-box">
+          <input type="file" accept="image/*" capture="environment" onchange="processarImagem(event)">
+          <span class="icone">📷</span>
+          <strong>Escanear Etiqueta</strong>
+          <small>Tire foto ou escolha da galeria</small>
+        </div>
+
+        <div id="status-ia">⏳ Lendo etiqueta com IA... Aguarde alguns segundos.</div>
+
+        <div class="card-titulo">👤 Dados Identificados</div>
+        
+        <div class="campo-grupo">
+          <label>Nome do Morador</label>
+          <input type="text" id="input-nome" placeholder="Ex: Renata Villela">
+        </div>
+
+        <div class="campo-grupo">
+          <label>Apartamento / Bloco (Confira o escrito à caneta)</label>
+          <input type="text" id="input-apto" placeholder="Ex: Apto 503">
+        </div>
+
+        <div class="campo-grupo">
+          <label>Transportadora / Loja</label>
+          <input type="text" id="input-transp" placeholder="Ex: Shopee, Magalu, Mercado Livre, J&T">
+        </div>
+
+        <div class="campo-grupo">
+          <label>Código de Rastreio / Pedido</label>
+          <input type="text" id="input-rastreio" placeholder="Identificado automaticamente">
+        </div>
+
+        <button class="btn btn-sucesso" onclick="salvarEncomenda()">✅ Salvar & Gerar PDF Diário</button>
+        
+        <button class="btn" style="background: transparent; color: #94a3b8; font-size: 12px; padding: 6px;" onclick="toggleTextoBruto()">
+          👁️ Ver texto bruto lido pela câmera
+        </button>
+        <div id="debug-ocr" class="texto-bruto-box">Nenhum texto lido ainda.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-titulo">📋 Encomendas de Hoje (<span id="contador-hoje">0</span>)</div>
+        <div id="lista-encomendas">
+          <p style="font-size: 13px; color: var(--texto-secundario); text-align: center; padding: 10px;">
+            Nenhuma encomenda registrada hoje.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 2: TREINAR MODELOS DE ETIQUETA -->
+    <div id="tela-modelos" class="tela">
+      <div class="card">
+        <div class="card-titulo">🧠 Ensinar Novo Modelo de Etiqueta</div>
+        <p style="font-size: 13px; color: var(--texto-secundario); margin-bottom: 14px; line-height: 1.4;">
