@@ -3,68 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Portaria IA - Camera Funcionando</title>
+  <title>Portaria IA - APK Nativo</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background: #0f172a; color: #f8fafc; padding-bottom: 85px; }
-    header { background: #1e293b; padding: 14px 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { font-size: 18px; color: #38bdf8; }
+    corpo { fundo: #0f172a; cor: #f8fafc; preenchimento-inferior: 85px; }
+    cabeçalho { fundo: #1e293b; preenchimento: 14px 16px; borda inferior: 1px sólida #334155; exibição: flexível; justificar conteúdo: espaço entre; alinhar itens: centro; }
+    cabeçalho h1 { tamanho da fonte: 18px; cor: #38bdf8; }
     .btn-topo { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; }
     main { padding: 14px; max-width: 600px; margin: 0 auto; }
     .tela { display: none; }
-    .tela.ativa { display: block; }
+    .tela.ativa { display: bloco; }
     .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
-    .card h2 { font-size: 15px; color: #93c5fd; margin-bottom: 10px; }
-    .btn-camera { position: relative; background: #2563eb; color: white; padding: 16px; border-radius: 10px; text-align: center; font-weight: bold; margin-bottom: 10px; display: block; border: none; width: 100%; font-size: 15px; }
-    .btn-galeria { position: relative; background: #334155; color: #e2e8f0; padding: 12px; border-radius: 10px; text-align: center; font-weight: bold; margin-bottom: 12px; display: block; width: 100%; font-size: 13px; }
+    .card h2 { tamanho da fonte: 15px; cor: #93c5fd; margem inferior: 10px; }
+    .btn-acao { width: 100%; background: #2563eb; color: white; padding: 15px; border: none; border-radius: 10px; text-align: center; font-weight: bold; font-size: 15px; margin-bottom: 10px; display: block; cursor: pointer; }
+    .btn-galeria { position: relative; width: 100%; background: #334155; color: #e2e8f0; padding: 13px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 12px; display: block; overflow: hidden; }
     .btn-galeria input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
-    label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; margin-top: 10px; }
+    rótulo { exibição: bloco; tamanho da fonte: 12px; cor: #94a3b8; margem inferior: 4px; margem superior: 10px; }
     input[type="text"], input[type="tel"] { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 14px; }
-    .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 12px; }
-    .btn-verde { background: #10b981; color: #022c22; }
-    .btn-azul { background: #3b82f6; color: white; }
-    .btn-cinza { background: #334155; color: #e2e8f0; }
+    .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 12px; cursor: pointer; }
+    .btn-verde { fundo: #10b981; cor: #022c22; }
+    .btn-azul { fundo: #3b82f6; cor: branca; }
+    .btn-cinza { fundo: #334155; cor: #e2e8f0; }
     .btn-vermelho { background: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 6px; font-size: 11px; margin-top: 6px; }
     .item { background: #0f172a; border: 1px solid #334155; padding: 12px; border-radius: 10px; margin-top: 10px; }
     .foto-perfil { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
     .flex-row { display: flex; gap: 12px; align-items: center; }
-    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 12px 0; }
-    .nav button { background: none; border: none; color: #94a3b8; font-size: 13px; font-weight: bold; }
-    .nav button.ativo { color: #38bdf8; }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 12px 0; z-index: 999; }
+    .nav button { background: none; border: none; color: #94a3b8; font-size: 13px; font-weight: bold; padding: 6px 12px; }
+    .botão de navegação.ativo { cor: #38bdf8; }
     #aviso-ia { display: none; background: #1e3a8a; color: #bfdbfe; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; text-align: center; }
     #match-box { display: none; background: #064e3b; border: 1px solid #10b981; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     #texto-lido-box { display: none; background: #020617; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 8px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
-    #box-camera-ao-vivo { display: none; background: #000; border-radius: 10px; padding: 10px; margin-bottom: 12px; text-align: center; border: 2px solid #38bdf8; }
-    #video-camera { width: 100%; max-height: 280px; border-radius: 8px; background: #111; object-fit: cover; }
+    #visor-camera-box { display: none; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 12px; border: 2px solid #38bdf8; }
+    #video-camera { width: 100%; max-height: 280px; display: block; background: #000; }
   </style>
 </head>
 <body>
 
-<header>
+<cabeçalho>
   <h1>Portaria IA</h1>
-  <button class="btn-topo" onclick="mudarAba('moradores')">+ Morador</button>
+  <button type="button" class="btn-topo" id="btn-topo-morador">+ Morador</button>
 </header>
 
 <main>
-  <!-- ABA 1: RECEBER E ENSINAR POR CORRECAO -->
+  <!-- ABA 1: RECEBER -->
   <div id="aba-inicio" class="tela ativa">
     <div class="card">
-      <button class="btn-camera" onclick="iniciarCameraAoVivo()">Abrir Camera Agora (Tirar Foto)</button>
+      <button type="button" class="btn-acao" id="btn-abrir-camera">Tirar Foto da Etiqueta (Câmera)</button>
 
-      <div id="box-camera-ao-vivo">
+      <div id="visor-camera-box">
         <video id="video-camera" autoplay playsinline muted></video>
-        <canvas id="canvas-foto" style="display:none;"></canvas>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-          <button class="btn btn-verde" style="margin-top:0;" onclick="capturarFotoAoVivo()">Capturar Foto</button>
-          <button class="btn btn-vermelho" style="margin-top:0; font-size:14px; padding:12px;" onclick="pararCameraAoVivo()">Fechar</button>
+        <div style="display:flex; gap:8px; padding:10px; background:#1e293b;">
+          <button type="button" class="btn btn-verde" style="margin-top:0;" id="btn-capturar-frame">Capturar e Ler</button>
+          <button type="button" class="btn btn-vermelho" style="margin-top:0; width:auto; padding:0 16px;" id="btn-fechar-camera">Fechar</button>
         </div>
       </div>
 
       <div class="btn-galeria">
         Escolher Foto da Galeria
-        <input type="file" accept="image/*" onchange="escanearFotoArquivo(event)">
+        <input type="file" accept="image/*" id="input-galeria">
       </div>
 
       <div id="aviso-ia">Lendo etiqueta...</div>
@@ -82,10 +81,10 @@
       <h2>Dados Coletados (Corrija para a IA Aprender)</h2>
       <div id="formulario-dinamico"></div>
 
-      <button class="btn btn-cinza" onclick="mudarAba('campos')">+ Adicionar Novo Campo de Coleta</button>
-      <button class="btn btn-verde" onclick="registrarEAtualizarIA()">Salvar Encomenda & Ensinar IA</button>
+      <button type="button" class="btn btn-cinza" id="btn-ir-campos">+ Adicionar Novo Campo de Coleta</button>
+      <button type="button" class="btn btn-verde" id="btn-salvar-encomenda">Salvar Encomenda & Ensinar IA</button>
 
-      <button class="btn btn-cinza" style="font-size: 12px; padding: 8px;" onclick="alternarTextoBruto()">Ver Texto Lido pela Camera</button>
+      <button type="button" class="btn btn-cinza" style="font-size: 12px; padding: 8px;" id="btn-ver-texto">Ver Texto Lido pela Camera</button>
       <div id="texto-lido-box"></div>
     </div>
 
@@ -95,10 +94,10 @@
     </div>
   </div>
 
-  <!-- ABA 2: MORADORES E FAMILIARES -->
+  <!-- ABA 2: MORADORES -->
   <div id="aba-moradores" class="tela">
     <div class="card">
-      <h2>Cadastrar Morador & Familia</h2>
+      <h2>Cadastro Morador & Família</h2>
       <p style="font-size: 12px; color: #94a3b8;">A IA cruza qualquer nome cadastrado aqui com o texto das etiquetas.</p>
 
       <label>Apartamento / Bloco</label>
@@ -111,29 +110,29 @@
       <input type="tel" id="cad-whats" placeholder="Ex: 71999999999">
 
       <label>Foto do Titular</label>
-      <input type="file" accept="image/*" onchange="processarFotoPerfil(event, 'prev-titular', -1)">
+      <input type="file" accept="image/*" id="input-foto-titular">
       <img id="prev-titular" style="display:none; width:60px; height:60px; border-radius:8px; margin-top:6px; object-fit:cover;">
 
       <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 10px;">
         <strong style="font-size: 13px; color: #38bdf8;">Familiares / Moradores do Mesmo Apto</strong>
         <div id="box-familiares"></div>
-        <button class="btn btn-cinza" onclick="novoFamiliar()">+ Adicionar Pessoa / Familiar</button>
+        <button type="button" class="btn btn-cinza" id="btn-add-familiar">+ Adicionar Pessoa / Familiar</button>
       </div>
 
-      <button class="btn btn-azul" onclick="salvarMoradorCompleto()">Salvar Cadastro</button>
+      <button type="button" class="btn btn-azul" id="btn-salvar-morador">Salvar Cadastro</button>
     </div>
 
     <div class="card">
-      <h2>Base de Moradores (Memoria da IA)</h2>
+      <h2>Base de Moradores (Memória da IA)</h2>
       <div id="lista-moradores"></div>
     </div>
   </div>
 
-  <!-- ABA 3: GERENCIAR CAMPOS E APRENDIZADO -->
+  <!-- ABA 3: CAMPOS E IA -->
   <div id="aba-campos" class="tela">
     <div class="card">
       <h2>Adicionar Campo para IA Coletar</h2>
-      <p style="font-size: 12px; color: #94a3b8;">Crie campos extras (ex: Nota Fiscal, Loja, Peso) e defina uma palavra-chave opcional que aparece antes do dado na etiqueta.</p>
+      <p style="font-size: 12px; color: #94a3b8;">Crie campos extras (ex: Nota Fiscal, Loja, Peso) e defina uma palavra-chave que aparece antes do dado na etiqueta.</p>
 
       <label>Nome do Campo</label>
       <input type="text" id="novo-campo-titulo" placeholder="Ex: Nota Fiscal">
@@ -141,25 +140,27 @@
       <label>Palavra-Chave na Etiqueta (Gatilho)</label>
       <input type="text" id="novo-campo-chave" placeholder="Ex: NF: ou Pedido:">
 
-      <button class="btn btn-azul" onclick="adicionarCampoColeta()">Adicionar Campo ao Formulario</button>
+      <button type="button" class="btn btn-azul" id="btn-add-campo">Adicionar Campo ao Formulário</button>
       <div id="lista-campos-config"></div>
     </div>
 
     <div class="card">
-      <h2>Memoria Aprendida pela IA</h2>
-      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Palavras-chave que a IA ja aprendeu com suas correcoes:</p>
+      <h2>Memória Aprendida pela IA</h2>
+      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Palavras-chave que a IA já aprendeu:</p>
       <div id="lista-memoria-ia"></div>
     </div>
   </div>
 </main>
 
 <nav class="nav">
-  <button id="btn-nav-inicio" class="ativo" onclick="mudarAba('inicio')">Receber</button>
-  <button id="btn-nav-moradores" onclick="mudarAba('moradores')">Moradores</button>
-  <button id="btn-nav-campos" onclick="mudarAba('campos')">Campos & IA</button>
+  <button type="button" id="btn-nav-inicio" class="ativo">Receber</button>
+  <button type="button" id="btn-nav-moradores">Moradores</button>
+  <button type="button" id="btn-nav-campos">Campos e IA</button>
 </nav>
 
+<script src="cordova.js"></script>
 <script>
+(function() {
   var camposBase = JSON.parse(localStorage.getItem('pia_campos') || '[{"id":"nome","titulo":"Nome do Morador","chave":"DESTINAT"},{"id":"apto","titulo":"Apartamento / Bloco","chave":"APTO"},{"id":"transp","titulo":"Transportadora","chave":""}]');
   var moradores = JSON.parse(localStorage.getItem('pia_moradores') || '[]');
   var encomendas = JSON.parse(localStorage.getItem('pia_encomendas') || '[]');
@@ -168,187 +169,326 @@
   var ultimoTextoLido = '';
   var fotoTitularTemp = '';
   var familiaresTemp = [];
-  var streamCamera = null;
+  var streamAtivo = null;
 
-  function iniciarCameraAoVivo() {
-    var box = document.getElementById('box-camera-ao-vivo');
-    var video = document.getElementById('video-camera');
-    box.style.display = 'block';
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('Este visualizador nao suporta camera ao vivo. Use o botao Escolher Foto da Galeria.');
-      box.style.display = 'none';
-      return;
-    }
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-      .then(function(stream) {
-        streamCamera = stream;
-        video.srcObject = stream;
-        video.play();
-      })
-      .catch(function() {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-          .then(function(stream2) {
-            streamCamera = stream2;
-            video.srcObject = stream2;
-            video.play();
-          })
-          .catch(function() {
-            alert('Permissao negada ou bloqueada pelo editor. Use o botao Escolher Foto da Galeria.');
-            box.style.display = 'none';
-          });
-      });
-  }
-
-  function capturarFotoAoVivo() {
-    var video = document.getElementById('video-camera');
-    var canvas = document.getElementById('canvas-foto');
-    if (!video.videoWidth) {
-      alert('Aguarde a imagem da camera carregar antes de capturar.');
-      return;
-    }
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    var ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    var imagemData = canvas.toDataURL('image/jpeg', 0.85);
-    pararCameraAoVivo();
-    processarOCR(imagemData);
-  }
-
-  function pararCameraAoVivo() {
-    if (streamCamera) {
-      var tracks = streamCamera.getTracks();
-      for (var i = 0; i < tracks.length; i++) {
-        tracks[i].stop();
-      }
-      streamCamera = null;
-    }
-    document.getElementById('box-camera-ao-vivo').style.display = 'none';
-  }
-
-  function mudarAba(nome) {
-    pararCameraAoVivo();
+  função mudarAba(nome) {
     var telas = document.querySelectorAll('.tela');
-    for (var i = 0; i < telas.length; i++) {
+    para (var i = 0; i < telas.length; i++) {
       telas[i].classList.remove('ativa');
     }
     var btns = document.querySelectorAll('.nav button');
-    for (var j = 0; j < btns.length; j++) {
+    para (var j = 0; j < btns.length; j++) {
       btns[j].classList.remove('ativo');
     }
-    document.getElementById('aba-' + nome).classList.add('ativa');
+    var alvo = document.getElementById('aba-' + nome);
+    if (alvo) alvo.classList.add('ativa');
     var ativo = document.getElementById('btn-nav-' + nome);
     if (ativo) ativo.classList.add('ativo');
     renderizarTudo();
   }
 
-  function alternarTextoBruto() {
-    var box = document.getElementById('texto-lido-box');
-    box.style.display = (box.style.display === 'block') ? 'none' : 'block';
+  função abrirCameraNativaOuWeb() {
+    // 1. Se o plugin cordova-plugin-camera estiver instalado no APK, use a câmera nativa do Android
+    se (navegador.câmera && navegador.câmera.obterImagem) {
+      navigator.camera.getPicture(
+        function(imageData) {
+          var dataUrl = 'data:image/jpeg;base64,' + imageData;
+          OCR(dataUrl);
+        },
+        function(err) {
+          alert('Câmera cancelada ou sem permissão: ' + err);
+        },
+        {
+          qualidade: 80,
+          destinationType: navigator.camera.DestinationType.DATA_URL,
+          sourceType: navigator.camera.PictureSourceType.CAMERA,
+          encodingType: navigator.camera.EncodingType.JPEG,
+          correctOrientation: true
+        }
+      );
+      retornar;
+    }
+
+    // 2. Fallback: Abre viseira de vídeo ao vivo no WebView/Navegador
+    var box = document.getElementById('visor-camera-box');
+    var video = document.getElementById('video-camera');
+    se (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+        .then(function(stream) {
+          streamAtivo = fluxo;
+          video.srcObject = stream;
+          box.style.display = 'block';
+          video.play();
+        })
+        .catch(function(e) {
+          alert('Não foi possível abrir a câmera ao vivo no APK sem permissão nativa. Use o botão Escolher Foto da Galeria ou adicione cordova-plugin-camera no config.xml.');
+        });
+    } else {
+      alert('Câmera direta indisponivel neste modo. Use Escolher Foto da Galeria.');
+    }
   }
 
-  function renderizarFormulario() {
+  função fecharCameraWeb() {
+    if (streamAtivo) {
+      var tracks = streamAtivo.getTracks();
+      para (var i = 0; i < tracks.length; i++) {
+        tracks[i].stop();
+      }
+      streamAtivo = null;
+    }
+    document.getElementById('visor-camera-box').style.display = 'none';
+  }
+
+  função capturarFrameCamera() {
+    var video = document.getElementById('video-camera');
+    var tela = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    var fotoBase64 = canvas.toDataURL('imagem/jpeg', 0,85);
+    fecharCameraWeb();
+    OCR(fotoBase64);
+  }
+
+  function lerArquivoGaleria(event) {
+    var files = event.target.files;
+    Se (!arquivos || !comprimento_dos_arquivos) retorne;
+    processarOCR(files[0]);
+  }
+
+  função OCR(fonteImagem) {
+    var aviso = document.getElementById('aviso-ia');
+    aviso.style.display = 'block';
+    aviso.textContent = 'Lendo imagem e consultando memória da IA...';
+
+    se (typeof Tesseract === 'undefined') {
+      aviso.textContent = 'Biblioteca de leitura offline ainda carregando ou sem internet na primeira abertura.';
+      retornar;
+    }
+
+    Tesseract.recognize(fonteImagem, 'por').then(function(res) {
+      ultimoTextoLido = res.data.text;
+      document.getElementById('texto-lido-box').textContent = ultimoTextoLido;
+      aplicarInteligencia(ultimoTextoLido);
+      aviso.textContent = 'Leitura concluída! Corrija qualquer campo que você precise antes de salvar.';
+    }).catch(function(err) {
+      aviso.textContent = 'Erro ao ler imagem. Tente novamente com mais luz.';
+    });
+  }
+
+  função aplicarInteligência(texto) {
+    var superior = texto.toUpperCase();
+    var linhas = texto.split('\n');
+
+    para (var i = 0; i < camposBase.length; i++) {
+      var el = document.getElementById('campo-valor-' + camposBase[i].id);
+      se (el) el.valor = '';
+    }
+
+    para (var m = 0; m < memoriaIA.length; m++) {
+      var reg = memoriaIA[m];
+      se (upper.indexOf(reg.chave.toUpperCase()) !== -1) {
+        var inputAlvo = document.getElementById('campo-valor-' + reg.campo);
+        se (inputAlvo && !inputAlvo.value) {
+          inputAlvo.value = reg.valor;
+        }
+      }
+    }
+
+    para (var c = 0; c < camposBase.length; c++) {
+      var campo = @Base[c];
+      var inputCampo = document.getElementById('campo-valor-' + campo.id);
+      se (campo.chave && campoDeEntrada && !campoDeEntrada.valor) {
+        var gatilhoUpper = campo.chave.toUpperCase();
+        for (var l = 0; l < linhas.length; l++) {
+          var linhaUpper = linhas[l].toUpperCase();
+          var pos = linhaUpper.indexOf(gatilhoUpper);
+          se (pos !== -1) {
+            var resto = linhas[l].substring(pos + campo.chave.length).replace(/[:\-]/g, '').trim();
+            se (rest.length > 1) {
+              inputCampo.value = resto;
+            } senão se (linhas[l + 1]) {
+              inputCampo.value = linhas[l + 1].trim();
+            }
+            quebra;
+          }
+        }
+      }
+    }
+
+    var inputApto = document.getElementById('campo-valor-apto');
+    se (inputApto && !inputApto.value) {
+      var matchApto = upper.match(/(APTO|APT|BLOCO)\s*([0-9A-Z]+)/);
+      se (matchApto && matchApto[2]) inputApto.value = 'Apto ' + matchApto[2];
+    }
+
+    var matchBox = document.getElementById('match-box');
+    matchBox.style.display = 'none';
+
+    para (var k = 0; k < moradores.length; k++) {
+      var mor = moradores[k];
+      var achou = falso;
+      var fotoExibir = mor.foto;
+      var nomeExibir = mor.nome;
+
+      se (upper.indexOf(mor.nome.toUpperCase()) !== -1) {
+        achou = true;
+      } senão se (mor.familiares) {
+        para (var f = 0; f < mor.familiares.length; f++) {
+          var fam = mor.familiares[f];
+          se (fam.nome && upper.indexOf(fam.nome.toUpperCase()) !== -1) {
+            achou = true;
+            nomeExibir = fam.nome + '(' + fam.parentesco + ' - ' + mor.nome + ')';
+            if (fam.foto) fotoExibir = fam.foto;
+            quebra;
+          }
+        }
+      }
+
+      if (achou) {
+        var inNome = document.getElementById('campo-valor-nome');
+        var inApto = document.getElementById('campo-valor-apto');
+        se (emNome) emNome.valor = nomeExibir;
+        if (inApto) inApto.valor = mor.apto;
+
+        matchBox.style.display = 'block';
+        document.getElementById('match-titulo').textContent = 'Morador Reconhecido: ' + mor.apto;
+        document.getElementById('match-desc').textContent = nomeExibir;
+        var imgEl = document.getElementById('match-foto');
+        if (fotoExibir) {
+          imgEl.src = fotoExibir;
+          imgEl.style.display = 'block';
+        } else {
+          imgEl.style.display = 'none';
+        }
+        quebra;
+      }
+    }
+  }
+
+  função renderizarFormulario() {
     var container = document.getElementById('formulario-dinamico');
     var html = '';
-    for (var i = 0; i < camposBase.length; i++) {
-      var c = camposBase[i];
+    para (var i = 0; i < camposBase.length; i++) {
+      var c = followBase[i];
       html += '<label>' + c.titulo + '</label>';
       html += '<input type="text" id="campo-valor-' + c.id + '" placeholder="Digite ou escaneie...">';
     }
     container.innerHTML = html;
   }
 
-  function adicionarCampoColeta() {
+  função adicionarCampoColeta() {
     var titulo = document.getElementById('novo-campo-titulo').value.trim();
     var chave = document.getElementById('novo-campo-chave').value.trim();
     if (!titulo) {
       alert('Digite o nome do campo.');
-      return;
+      retornar;
     }
     var id = 'campo_' + Date.now();
-    camposBase.push({ id: id, titulo: titulo, chave: chave });
+    camposBase.push({ id: id, título: título, chave: chave });
     localStorage.setItem('pia_campos', JSON.stringify(camposBase));
     document.getElementById('novo-campo-titulo').value = '';
     document.getElementById('novo-campo-chave').value = '';
     renderizarTudo();
-    alert('Campo adicionado!');
+    alert('Campo adicionado com sucesso!');
   }
 
-  function removerCampo(idx) {
-    if (idx < 3) {
-      alert('Os 3 campos principais nao podem ser excluidos.');
-      return;
-    }
-    camposBase.splice(idx, 1);
-    localStorage.setItem('pia_campos', JSON.stringify(camposBase));
-    renderizarTudo();
-  }
-
-  function processarFotoPerfil(event, imgId, famIdx) {
-    var file = event.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var img = new Image();
+  função comprimirImagemArquivo(arquivo, callback) {
+    var leitor = new FileReader();
+    leitor.onload = função(e) {
+      var img = nova Image();
       img.onload = function() {
-        var canvas = document.createElement('canvas');
+        var tela = document.createElement('canvas');
         canvas.width = 140;
         canvas.height = 140;
         var ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, 140, 140);
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        if (famIdx === -1) {
-          fotoTitularTemp = dataUrl;
-          var el = document.getElementById(imgId);
-          el.src = dataUrl;
-          el.style.display = 'block';
-        } else {
-          familiaresTemp[famIdx].foto = dataUrl;
-          renderizarFamiliaresTemp();
-        }
+        callback(canvas.toDataURL('image/jpeg', 0.7));
       };
       img.src = e.target.result;
     };
-    reader.readAsDataURL(file);
+    leitor.readAsDataURL(arquivo);
   }
 
-  function novoFamiliar() {
+  função novoFamiliar() {
     familiaresTemp.push({ nome: '', parentesco: '', foto: '' });
     renderizarFamiliaresTemp();
   }
 
-  function renderizarFamiliaresTemp() {
+  função renderizarFamiliaresTemp() {
     var box = document.getElementById('box-familiares');
-    var html = '';
-    for (var i = 0; i < familiaresTemp.length; i++) {
-      var f = familiaresTemp[i];
-      html += '<div class="item">';
-      html += '<label>Nome da Pessoa ' + (i + 1) + '</label>';
-      html += '<input type="text" value="' + f.nome + '" oninput="familiaresTemp[' + i + '].nome=this.value" placeholder="Nome completo">';
-      html += '<label>Parentesco / Relacao</label>';
-      html += '<input type="text" value="' + f.parentesco + '" oninput="familiaresTemp[' + i + '].parentesco=this.value" placeholder="Ex: Esposa, Filho, Morador">';
-      html += '<label>Foto</label>';
-      html += '<input type="file" accept="image/*" onchange="processarFotoPerfil(event, '', ' + i + ')">';
-      if (f.foto) html += '<img src="' + f.foto + '" style="width:45px;height:45px;border-radius:6px;margin-top:6px;">';
-      html += '</div>';
+    box.innerHTML = '';
+    para (var i = 0; i < familiaresTemp.length; i++) {
+      (function(idx) {
+        var f = familiaresTemp[idx];
+        var div = document.createElement('div');
+        div.className = 'item';
+
+        var lbl1 = document.createElement('rótulo');
+        lbl1.textContent = 'Nome da Pessoa' + (idx + 1);
+        var inp1 = document.createElement('input');
+        inp1.type = 'text';
+        inp1.value = f.nome;
+        inp1.placeholder = 'Nome completo';
+        inp1.addEventListener('input', function() { familiaresTemp[idx].nome = this.value; });
+
+        var lbl2 = document.createElement('label');
+        lbl2.textContent = 'Parentesco / Relação';
+        var inp2 = document.createElement('input');
+        inp2.type = 'text';
+        inp2.value = f.parentesco;
+        inp2.placeholder = 'Ex: Esposa, Filho, Morador';
+        inp2.addEventListener('input', function() { familiaresTemp[idx].parentesco = this.value; });
+
+        var lbl3 = document.createElement('label');
+        lbl3.textContent = 'Foto';
+        var inp3 = document.createElement('input');
+        inp3.type = 'arquivo';
+        inp3.accept = 'image/*';
+        inp3.addEventListener('change', function(ev) {
+          se (ev.target.files && ev.target.files[0]) {
+            comprimirImagemArquivo(ev.target.files[0], function(dataUrl) {
+              familiaresTemp[idx].foto = dataUrl;
+              renderizarFamiliaresTemp();
+            });
+          }
+        });
+
+        div.appendChild(lbl1);
+        div.appendChild(inp1);
+        div.appendChild(lbl2);
+        div.appendChild(inp2);
+        div.appendChild(lbl3);
+        div.appendChild(inp3);
+
+        if (f.foto) {
+          var img = document.createElement('img');
+          img.src = f.foto;
+          img.style.width = '45px';
+          img.style.height = '45px';
+          img.style.borderRadius = '6px';
+          img.style.marginTop = '6px';
+          div.appendChild(img);
+        }
+
+        box.appendChild(div);
+      })(i);
     }
-    box.innerHTML = html;
   }
 
-  function salvarMoradorCompleto() {
+  função salvarMoradorCompleto() {
     var apto = document.getElementById('cad-apto').value.trim();
     var nome = document.getElementById('cad-nome').value.trim();
     var whats = document.getElementById('cad-whats').value.trim();
-    if (!apto || !nome) {
-      alert('Preencha o Apartamento e o Nome.');
-      return;
+    se (!apto || !nome) {
+      alert('Preenche o Apartamento e o Nome.');
+      retornar;
     }
     moradores.unshift({
       apto: apto,
       nome: nome,
-      whats: whats,
+      o que é: o que é,
       foto: fotoTitularTemp,
       familiares: familiaresTemp
     });
@@ -361,144 +501,24 @@
     familiaresTemp = [];
     renderizarFamiliaresTemp();
     renderizarTudo();
-    alert('Morador e familiares salvos na memoria da IA!');
+    alert('Morador e familiares salvos!');
   }
 
-  function escanearFotoArquivo(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-    processarOCR(file);
-  }
-
-  function processarOCR(fonteImagem) {
-    var aviso = document.getElementById('aviso-ia');
-    aviso.style.display = 'block';
-    aviso.textContent = 'Lendo imagem e consultando memoria da IA...';
-
-    Tesseract.recognize(fonteImagem, 'por').then(function(res) {
-      ultimoTextoLido = res.data.text;
-      document.getElementById('texto-lido-box').textContent = ultimoTextoLido;
-      aplicarInteligencia(ultimoTextoLido);
-      aviso.textContent = 'Leitura concluida! Corrija se precisar antes de salvar para a IA aprender.';
-    }).catch(function() {
-      aviso.textContent = 'Nao foi possivel ler a imagem. Tente uma foto mais nitida.';
-    });
-  }
-
-  function aplicarInteligencia(texto) {
-    var upper = texto.toUpperCase();
-    var linhas = texto.split(String.fromCharCode(10));
-
-    for (var i = 0; i < camposBase.length; i++) {
-      var el = document.getElementById('campo-valor-' + camposBase[i].id);
-      if (el) el.value = '';
-    }
-
-    for (var m = 0; m < memoriaIA.length; m++) {
-      var reg = memoriaIA[m];
-      if (upper.indexOf(reg.chave.toUpperCase()) !== -1) {
-        var inputAlvo = document.getElementById('campo-valor-' + reg.campo);
-        if (inputAlvo && !inputAlvo.value) {
-          inputAlvo.value = reg.valor;
-        }
-      }
-    }
-
-    for (var c = 0; c < camposBase.length; c++) {
-      var campo = camposBase[c];
-      var inputCampo = document.getElementById('campo-valor-' + campo.id);
-      if (campo.chave && inputCampo && !inputCampo.value) {
-        var gatilhoUpper = campo.chave.toUpperCase();
-        for (var l = 0; l < linhas.length; l++) {
-          var linhaUpper = linhas[l].toUpperCase();
-          var pos = linhaUpper.indexOf(gatilhoUpper);
-          if (pos !== -1) {
-            var resto = linhas[l].substring(pos + campo.chave.length).replace(/[:\-]/g, '').trim();
-            if (resto.length > 1) {
-              inputCampo.value = resto;
-            } else if (linhas[l + 1]) {
-              inputCampo.value = linhas[l + 1].trim();
-            }
-            break;
-          }
-        }
-      }
-    }
-
-    var inputApto = document.getElementById('campo-valor-apto');
-    if (inputApto && !inputApto.value) {
-      var matchApto = upper.match(/(APTO|APT|BLOCO)\s*([0-9A-Z]+)/);
-      if (matchApto) inputApto.value = 'Apto ' + matchApto[2];
-    }
-
-    var matchBox = document.getElementById('match-box');
-    matchBox.style.display = 'none';
-
-    for (var k = 0; k < moradores.length; k++) {
-      var mor = moradores[k];
-      var achou = false;
-      var fotoExibir = mor.foto;
-      var nomeExibir = mor.nome;
-
-      if (upper.indexOf(mor.nome.toUpperCase()) !== -1) {
-        achou = true;
-      } else if (mor.familiares) {
-        for (var f = 0; f < mor.familiares.length; f++) {
-          var fam = mor.familiares[f];
-          if (fam.nome && upper.indexOf(fam.nome.toUpperCase()) !== -1) {
-            achou = true;
-            nomeExibir = fam.nome + ' (' + fam.parentesco + ' - ' + mor.nome + ')';
-            if (fam.foto) fotoExibir = fam.foto;
-            break;
-          }
-        }
-      }
-
-      if (achou) {
-        var inNome = document.getElementById('campo-valor-nome');
-        var inApto = document.getElementById('campo-valor-apto');
-        if (inNome) inNome.value = nomeExibir;
-        if (inApto) inApto.value = mor.apto;
-
-        matchBox.style.display = 'block';
-        document.getElementById('match-titulo').textContent = 'Morador Reconhecido: ' + mor.apto;
-        document.getElementById('match-desc').textContent = nomeExibir;
-        var imgEl = document.getElementById('match-foto');
-        if (fotoExibir) {
-          imgEl.src = fotoExibir;
-          imgEl.style.display = 'block';
-        } else {
-          imgEl.style.display = 'none';
-        }
-        break;
-      }
-    }
-  }
-
-  function registrarEAtualizarIA() {
+  função registrarEAtualizarIA() {
     var dadosSalvos = {};
-    for (var i = 0; i < camposBase.length; i++) {
-      var id = camposBase[i].id;
-      var val = document.getElementById('campo-valor-' + id).value.trim();
+    para (var i = 0; i < camposBase.length; i++) {
+      var id = superioresBase[i].id;
+      var el = document.getElementById('campo-valor-' + id);
+      var val = el? el.value.trim() : '';
       dadosSalvos[camposBase[i].titulo] = val;
 
-      if (ultimoTextoLido && val.length > 2) {
+      se (ultimoTextoLido && val.length > 2 && id === 'transp') {
         var palavras = ultimoTextoLido.toUpperCase().split(/\s+/);
         for (var p = 0; p < palavras.length; p++) {
           var pal = palavras[p].replace(/[^A-Z0-9]/g, '');
           if (pal.length >= 5 && pal !== 'DESTINATARIO' && pal !== 'REMETENTE' && pal !== 'SALVADOR' && pal !== 'BAHIA') {
-            var jaExiste = false;
-            for (var m = 0; m < memoriaIA.length; m++) {
-              if (memoriaIA[m].chave === pal && memoriaIA[m].campo === id) {
-                memoriaIA[m].valor = val;
-                jaExiste = true;
-                break;
-              }
-            }
-            if (!jaExiste && id === 'transp') {
-              memoriaIA.unshift({ chave: pal, campo: id, valor: val });
-              break;
-            }
+            memoriaIA.unshift({ chave: pal, campo: id, valor: val });
+            quebra;
           }
         }
       }
@@ -506,7 +526,8 @@
 
     localStorage.setItem('pia_memoria', JSON.stringify(memoriaIA));
 
-    var hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    var agora = new Date();
+    var hora = ('0' + agora.getHours()).slice(-2) + ':' + ('0' + agora.getMinutes()).slice(-2);
     encomendas.unshift({ hora: hora, dados: dadosSalvos });
     localStorage.setItem('pia_encomendas', JSON.stringify(encomendas));
 
@@ -514,41 +535,42 @@
     document.getElementById('match-box').style.display = 'none';
     document.getElementById('aviso-ia').style.display = 'none';
     renderizarTudo();
-    gerarPDFRelatorio();
-    alert('Encomenda salva e aprendizado atualizado!');
+    gerarPDFRelatório();
+    alert('Encomenda salva e PDF gerado!');
   }
 
-  function gerarPDFRelatorio() {
-    if (!window.jspdf) return;
+  função gerarPDFRelatório() {
+    se (typeof window.jspdf === 'undefined') retorne;
     var doc = new window.jspdf.jsPDF();
-    var data = new Date().toLocaleDateString('pt-BR');
+    var agora = new Date();
+    var dados = ('0' + agora.getDate()).slice(-2) + '/' + ('0' + (agora.getMonth() + 1)).slice(-2) + '/' + agora.getFullYear();
     doc.setFontSize(14);
-    doc.text('Relatorio Portaria IA - ' + data, 14, 18);
+    doc.text('Relatório Portaria IA - ' + dados, 14, 18);
     doc.setFontSize(10);
     var y = 30;
-    for (var i = 0; i < encomendas.length; i++) {
+    para (var i = 0; i < encomendas.length; i++) {
       var enc = encomendas[i];
       var resumo = (i + 1) + '. [' + enc.hora + '] ';
-      for (var chave in enc.dados) {
+      for (var chave em enc.dados) {
         if (enc.dados[chave]) resumo += chave + ': ' + enc.dados[chave] + ' | ';
       }
       doc.text(resumo, 14, y);
       y += 8;
-      if (y > 280) { doc.addPage(); y = 20; }
+      se (y > 280) { doc.addPage(); y = 20; }
     }
     doc.save('Portaria_' + data.replace(/\//g, '-') + '.pdf');
   }
 
-  function renderizarTudo() {
+  função renderizarTudo() {
     renderizarFormulario();
 
     var divEnc = document.getElementById('lista-encomendas');
     var htmlEnc = '';
-    for (var i = 0; i < encomendas.length; i++) {
+    para (var i = 0; i < encomendas.length; i++) {
       var enc = encomendas[i];
-      var textoZap = 'Ola! Chegou uma encomenda na portaria as ' + enc.hora + '. ';
+      var textoZap = 'Olá! Chegou uma encomenda na portaria como '+ enc.hora +'. ';
       htmlEnc += '<div class="item"><small style="color:#38bdf8;">' + enc.hora + '</small><br>';
-      for (var k in enc.dados) {
+      para (var k em enc.dados) {
         if (enc.dados[k]) {
           htmlEnc += '<strong>' + k + ':</strong> ' + enc.dados[k] + '<br>';
           textoZap += k + ': ' + enc.dados[k] + ' | ';
@@ -561,7 +583,7 @@
 
     var divMor = document.getElementById('lista-moradores');
     var htmlMor = '';
-    for (var m = 0; m < moradores.length; m++) {
+    para (var m = 0; m < moradores.length; m++) {
       var mor = moradores[m];
       htmlMor += '<div class="item flex-row">';
       if (mor.foto) htmlMor += '<img src="' + mor.foto + '" class="foto-perfil">';
@@ -572,23 +594,80 @@
     divMor.innerHTML = htmlMor || '<p style="font-size:13px;color:#94a3b8;">Nenhum morador cadastrado.</p>';
 
     var divCampos = document.getElementById('lista-campos-config');
-    var htmlCampos = '';
-    for (var c = 0; c < camposBase.length; c++) {
-      htmlCampos += '<div class="item"><strong>' + camposBase[c].titulo + '</strong> <small>(Gatilho: ' + (camposBase[c].chave || 'Livre') + ')</small>';
-      if (c >= 3) htmlCampos += '<br><button class="btn-vermelho" onclick="removerCampo(' + c + ')">Remover</button>';
-      htmlCampos += '</div>';
+    divCampos.innerHTML = '';
+    para (var c = 0; c < camposBase.length; c++) {
+      (function(idx) {
+        var item = document.createElement('div');
+        item.className = 'item';
+        item.innerHTML = '<strong>' + camposBase[idx].titulo + '</strong> <small>(Gatilho: ' + (camposBase[idx].chave || 'Livre') + ')</small>';
+        se (idx >= 3) {
+          var btnRem = document.createElement('button');
+          btnRem.type = 'button';
+          btnRem.className = 'btn-vermelho';
+          btnRem.textContent = 'Removedor';
+          btnRem.style.display = 'block';
+          btnRem.addEventListener('click', function() {
+            camposBase.splice(idx, 1);
+            localStorage.setItem('pia_campos', JSON.stringify(camposBase));
+            renderizarTudo();
+          });
+          item.appendChild(btnRem);
+        }
+        divCampos.appendChild(item);
+      })(c);
     }
-    divCampos.innerHTML = htmlCampos;
 
     var divMem = document.getElementById('lista-memoria-ia');
     var htmlMem = '';
-    for (var x = 0; x < memoriaIA.length; x++) {
+    para (var x = 0; x < memoriaIA.length; x++) {
       htmlMem += '<div class="item"><small>Se ler <strong>' + memoriaIA[x].chave + '</strong> -> preenche <strong>' + memoriaIA[x].valor + '</strong></small></div>';
     }
     divMem.innerHTML = htmlMem;
   }
 
-  renderizarTudo();
+  // Ligação segura de todos os eventos após carregamento do DOM (Funciona 100% no APK WebView)
+  função iniciarApp() {
+    document.getElementById('btn-topo-morador').addEventListener('click', function() { mudarAba('moradores'); });
+    document.getElementById('btn-nav-inicio').addEventListener('click', function() { mudarAba('inicio'); });
+    document.getElementById('btn-nav-moradores').addEventListener('click', function() { mudarAba('moradores'); });
+    document.getElementById('btn-nav-campos').addEventListener('click', function() { mudarAba('campos'); });
+    document.getElementById('btn-ir-campos').addEventListener('click', function() { mudarAba('campos'); });
+
+    document.getElementById('btn-abrir-camera').addEventListener('click', abrirCameraNativaOuWeb);
+    document.getElementById('btn-capturar-frame').addEventListener('click', capturarFrameCamera);
+    document.getElementById('btn-fechar-camera').addEventListener('click', fecharCameraWeb);
+    document.getElementById('input-galeria').addEventListener('change', lerArquivoGaleria);
+
+    document.getElementById('btn-salvar-encomenda').addEventListener('click', registrarEAtualizarIA);
+    document.getElementById('btn-ver-texto').addEventListener('click', function() {
+      var box = document.getElementById('texto-lido-box');
+      box.style.display = (box.style.display === 'block') ? 'none' : 'block';
+    });
+
+    document.getElementById('input-foto-titular').addEventListener('change', function(ev) {
+      se (ev.target.files && ev.target.files[0]) {
+        comprimirImagemArquivo(ev.target.files[0], function(dataUrl) {
+          fotoTitularTemp = dataUrl;
+          var anterior = document.getElementById('prev-titular');
+          prev.src = dataUrl;
+          prev.style.display = 'block';
+        });
+      }
+    });
+
+    document.getElementById('btn-add-familiar').addEventListener('click', novoFamiliar);
+    document.getElementById('btn-salvar-morador').addEventListener('click', salvarMoradorCompleto);
+    document.getElementById('btn-add-campo').addEventListener('click', adicionarCampoColeta);
+
+    renderizarTudo();
+  }
+
+  se (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', iniciarApp);
+  } else {
+    iniciarApp();
+  }
+})();
 </script>
 </body>
 </html>
