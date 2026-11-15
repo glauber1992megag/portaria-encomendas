@@ -1,0 +1,6 @@
+{
+  "appId": "com.portaria.encomendas",
+  "appName": "Portaria Encomendas",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
