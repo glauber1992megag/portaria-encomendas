@@ -2,7 +2,7 @@ name: Criar APK para Android
 
 on:
   push:
-    branches: [ "main", "master", "principal" ]
+    branches: [ main, master, principal ]
   workflow_dispatch:
 
 jobs:
@@ -29,10 +29,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Add Capacitor Android & Camera Permissions
+      - name: Add Capacitor Android and Camera Permissions
         run: |
           npx cap add android
-          sed -i 's/<\/manifest>/<uses-permission android:name="android.permission.CAMERA" \/><uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" \/><uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" \/><\/manifest>/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA" /><uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /><uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /><application|' android/app/src/main/AndroidManifest.xml
           npx cap sync android
 
       - name: Build APK with Gradle
