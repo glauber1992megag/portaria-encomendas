@@ -1,6 +1,3 @@
-ARQUIVO 3: .github/workflows/build-apk.yml
-(Dentro das pastas: .github/workflows/build-apk.yml)
---------------------------------------------------------------------------------
 name: Criar APK para Android
 
 on:
