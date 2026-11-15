@@ -1,16 +1,16 @@
-
 {
   "name": "portaria-encomendas",
   "version": "1.0.0",
-  "description": "Sistema de Portaria Inteligente com IA e Camera Nativa",
-  "main": "index.html",
+  "description": "Sistema de Portaria Inteligente com IA",
   "scripts": {
     "build": "mkdir -p www && cp index.html www/index.html"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
     "@capacitor/camera": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
     "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
   }
 }
