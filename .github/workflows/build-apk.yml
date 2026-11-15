@@ -1,26 +1,30 @@
-name: Criar APK para Android
+name: Android APK
 
 on:
   push:
-    branches: [ main, master, principal ]
+    branches: [main, master, principal]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
 
       - name: Install dependencies
         run: npm install
 
-      - name: Build web app
+      - name: Build mobile web bundle
         run: npm run build
 
       - name: Setup Java 17
@@ -29,21 +33,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Add Android project
+      - name: Add Android platform
         run: npx cap add android
 
-      - name: Sync Capacitor
+      - name: Sync native Android project
         run: npx cap sync android
 
-      - name: Build APK
+      - name: Build debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: portaria-inteligente-apk
+          name: portaria-encomendas-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
