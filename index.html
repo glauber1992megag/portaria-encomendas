@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Portaria Inteligente Pro</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:;">
+  <title>Portaria Inteligente</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background: #0f172a; color: #f8fafc; padding-bottom: 85px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: #0f172a; color: #f8fafc; padding-bottom: 90px; }
     header { background: #1e293b; padding: 14px 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
     header h1 { font-size: 18px; color: #38bdf8; }
     .btn-topo { background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; }
@@ -17,73 +18,75 @@
     .tela.ativa { display: block; }
     .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
     .card h2 { font-size: 15px; color: #93c5fd; margin-bottom: 10px; }
-    .grid-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .btn-acao-foto { position: relative; background: #2563eb; color: white; padding: 15px 10px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 14px; border: none; display: flex; align-items: center; justify-content: center; }
-    .btn-galeria { background: #0284c7; }
-    .btn-galeria input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
+    .grid-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .btn-cam-nativa { background: #2563eb; color: white; border: none; padding: 14px 10px; border-radius: 10px; font-weight: bold; font-size: 14px; text-align: center; }
+    .btn-galeria-box { position: relative; background: #334155; color: #f8fafc; padding: 14px 10px; border-radius: 10px; font-weight: bold; font-size: 14px; text-align: center; display: flex; align-items: center; justify-content: center; }
+    .btn-galeria-box input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
     label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; margin-top: 10px; }
     input[type="text"], input[type="tel"], select { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 14px; }
-    .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 10px; }
+    .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 12px; }
     .btn-verde { background: #10b981; color: #022c22; }
     .btn-azul { background: #3b82f6; color: white; }
     .btn-cinza { background: #334155; color: #e2e8f0; }
-    .btn-vermelho { background: #ef4444; color: white; padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; margin-top: 6px; }
-    .btn-pequeno { padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin-right: 6px; margin-top: 6px; }
+    .btn-pequeno { padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin-top: 6px; margin-right: 6px; }
+    .btn-vermelho { background: #ef4444; color: white; }
+    .btn-amarelo { background: #f59e0b; color: #451a03; }
     .item { background: #0f172a; border: 1px solid #334155; padding: 12px; border-radius: 10px; margin-top: 10px; }
-    .foto-perfil { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
+    .foto-perfil { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid #38bdf8; }
     .flex-row { display: flex; gap: 12px; align-items: center; }
-    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 12px 0; z-index: 99; }
-    .nav button { background: none; border: none; color: #94a3b8; font-size: 12px; font-weight: bold; }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 12px 0; z-index: 999; }
+    .nav button { background: none; border: none; color: #94a3b8; font-size: 12px; font-weight: bold; padding: 4px 8px; }
     .nav button.ativo { color: #38bdf8; }
     #aviso-ia { display: none; background: #1e3a8a; color: #bfdbfe; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; text-align: center; }
     #match-box { display: none; background: #064e3b; border: 1px solid #10b981; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
-    .badge-pendente { background: #f59e0b; color: #451a03; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .badge-entregue { background: #10b981; color: #022c22; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    #texto-bruto-box { display: none; background: #020617; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 8px; border-radius: 6px; margin-top: 8px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
+    #visor-erro { display: none; background: #7f1d1d; color: #fecaca; padding: 10px; font-size: 12px; border-radius: 8px; margin: 10px; }
+    .badge-status { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+    .st-pendente { background: #f59e0b; color: #451a03; }
+    .st-retirado { background: #10b981; color: #022c22; }
   </style>
 </head>
 <body>
 
+<div id="visor-erro"></div>
+
 <header>
   <h1>Portaria Inteligente</h1>
-  <button id="btn-topo-morador" class="btn-topo">+ Morador</button>
+  <button type="button" class="btn-topo" id="btn-topo-morador">+ Morador</button>
 </header>
 
 <main>
-  <!-- ABA 1: CONTROLE DE ENTRADA E SAIDA -->
+  <!-- ABA 1: RECEBER E SAIDA DE ENCOMENDAS -->
   <div id="aba-inicio" class="tela ativa">
     <div class="card">
-      <h2>Nova Entrada de Encomenda</h2>
-      <div class="grid-botoes">
-        <button id="btn-camera-real" class="btn-acao-foto">Camera Real (Lens)</button>
-        <div class="btn-acao-foto btn-galeria">
-          Foto da Galeria
-          <input id="input-galeria" type="file" accept="image/*">
+      <h2>Coleta Inteligente (Estilo Lens)</h2>
+      <div class="grid-btns">
+        <button type="button" class="btn-cam-nativa" id="btn-abrir-camera">Camera Real</button>
+        <div class="btn-galeria-box">
+          <span>Foto Galeria</span>
+          <input type="file" accept="image/*" id="input-galeria">
         </div>
       </div>
 
-      <div id="aviso-ia">Lendo etiqueta com IA...</div>
+      <div id="aviso-ia">Analisando etiqueta...</div>
 
       <div id="match-box">
         <div class="flex-row">
           <img id="match-foto" class="foto-perfil" src="" alt="Foto">
           <div>
-            <strong id="match-titulo" style="color: #6ee7b7; font-size: 14px;">Morador Reconhecido!</strong>
+            <strong id="match-titulo" style="color: #6ee7b7; font-size: 14px;">Morador Identificado!</strong>
             <div id="match-desc" style="font-size: 12px; color: #d1fae5;"></div>
           </div>
         </div>
       </div>
 
-      <div id="formulario-campos"></div>
+      <div id="formulario-dinamico"></div>
 
-      <button id="btn-ir-campos" class="btn btn-cinza">+ Adicionar / Editar Campos</button>
-      <button id="btn-salvar-encomenda" class="btn btn-verde">Salvar Entrada & Atualizar PDF</button>
-      <button id="btn-ver-bruto" class="btn btn-cinza" style="font-size: 12px; padding: 8px;">Ver Texto Lido pela Camera</button>
-      <div id="texto-bruto-box"></div>
+      <button type="button" class="btn btn-cinza" id="btn-ir-campos">+ Adicionar ou Editar Campos</button>
+      <button type="button" class="btn btn-verde" id="btn-salvar-encomenda">Salvar Entrada & Backup PDF</button>
     </div>
 
     <div class="card">
-      <h2>Controle de Encomendas (Entrada e Saida)</h2>
+      <h2>Controle de Entrada e Saida (Hoje)</h2>
       <div id="lista-encomendas"></div>
     </div>
   </div>
@@ -95,55 +98,51 @@
       <input type="hidden" id="edit-morador-idx" value="-1">
 
       <label>Apartamento / Bloco</label>
-      <input type="text" id="mor-apto" placeholder="Ex: Apto 503">
+      <input type="text" id="cad-apto" placeholder="Ex: Apto 503">
 
-      <label>Nome do Morador Titular</label>
-      <input type="text" id="mor-nome" placeholder="Nome completo">
+      <label>Nome do Morador Principal</label>
+      <input type="text" id="cad-nome" placeholder="Nome completo">
 
       <label>WhatsApp (com DDD)</label>
-      <input type="tel" id="mor-whats" placeholder="Ex: 71999999999">
+      <input type="tel" id="cad-whats" placeholder="Ex: 71999999999">
 
-      <label>Foto do Titular</label>
-      <input id="input-foto-titular" type="file" accept="image/*">
-      <img id="prev-foto-titular" style="display:none; width:60px; height:60px; border-radius:8px; margin-top:6px; object-fit:cover;">
+      <label>Foto do Morador Principal</label>
+      <input type="file" accept="image/*" id="input-foto-titular">
+      <img id="prev-titular" style="display:none; width:60px; height:60px; border-radius:8px; margin-top:6px; object-fit:cover;">
 
       <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 10px;">
         <strong style="font-size: 13px; color: #38bdf8;">Familiares / Moradores do Mesmo Apto</strong>
-        <div id="box-familiares-form"></div>
-        <button id="btn-add-familiar" class="btn btn-cinza">+ Adicionar Familiar / Morador</button>
+        <div id="box-familiares"></div>
+        <button type="button" class="btn btn-cinza" id="btn-add-familiar">+ Adicionar Familiar / Morador</button>
       </div>
 
-      <button id="btn-salvar-morador" class="btn btn-azul">Salvar Morador e Familia</button>
+      <button type="button" class="btn btn-azul" id="btn-salvar-morador">Salvar Cadastro</button>
     </div>
 
     <div class="card">
-      <h2>Moradores Cadastrados (Base da IA)</h2>
+      <h2>Moradores Cadastrados</h2>
       <div id="lista-moradores"></div>
     </div>
   </div>
 
-  <!-- ABA 3: CAMPOS PERSONALIZADOS E APRENDIZADO IA -->
+  <!-- ABA 3: CAMPOS E IA -->
   <div id="aba-campos" class="tela">
     <div class="card">
-      <h2>Adicionar Campo ao Formulario</h2>
+      <h2>Gerenciar Campos do Formulario</h2>
       <label>Nome do Novo Campo</label>
-      <input type="text" id="novo-campo-nome" placeholder="Ex: Nota Fiscal ou Loja">
-      <label>Palavra-Chave na Etiqueta (Opcional)</label>
-      <input type="text" id="novo-campo-gatilho" placeholder="Ex: NF: ou Pedido:">
-      <button id="btn-criar-campo" class="btn btn-azul">Adicionar Campo</button>
-      <div id="lista-campos-ativos"></div>
+      <input type="text" id="novo-campo-titulo" placeholder="Ex: Nota Fiscal ou Loja">
+
+      <label>Palavra-Chave na Etiqueta (Para a IA achar)</label>
+      <input type="text" id="novo-campo-chave" placeholder="Ex: NF: ou Pedido:">
+
+      <button type="button" class="btn btn-azul" id="btn-criar-campo">Adicionar Campo</button>
+      <div id="lista-campos-config"></div>
     </div>
 
     <div class="card">
-      <h2>Modelos & Aprendizado da IA</h2>
-      <label>Nome da Transportadora</label>
-      <input type="text" id="mod-transp" placeholder="Ex: Loggi, Jadlog, Amazon">
-      <label>Palavra-Chave na Etiqueta</label>
-      <input type="text" id="mod-gatilho" placeholder="Ex: LOGGI">
-      <label>Texto que vem ANTES do Nome</label>
-      <input type="text" id="mod-ancora" placeholder="Ex: DESTINATARIO">
-      <button id="btn-salvar-modelo" class="btn btn-verde">Ensinar Modelo para IA</button>
-      <div id="lista-modelos"></div>
+      <h2>Aprendizado da IA Interna</h2>
+      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">A IA aprende sozinha sempre que voce corrige um campo lido pela camera antes de salvar.</p>
+      <div id="lista-memoria-ia"></div>
     </div>
   </div>
 
@@ -151,35 +150,40 @@
   <div id="aba-backup" class="tela">
     <div class="card">
       <h2>Pasta: backup dados PDF</h2>
-      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
-        Backup automatico separado por dia. Ao mudar o dia, um novo arquivo e criado sem apagar os anteriores.
-      </p>
+      <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">Atualizado automaticamente a cada movimento. Um novo arquivo e criado a cada dia sem apagar os anteriores.</p>
       <div id="lista-backups-pdf"></div>
     </div>
   </div>
 </main>
 
 <nav class="nav">
-  <button id="nav-inicio" class="ativo">Portaria</button>
-  <button id="nav-moradores">Moradores</button>
-  <button id="nav-campos">Campos/IA</button>
-  <button id="nav-backup">Backup PDF</button>
+  <button type="button" id="nav-inicio" class="ativo">Portaria</button>
+  <button type="button" id="nav-moradores">Moradores</button>
+  <button type="button" id="nav-campos">Campos & IA</button>
+  <button type="button" id="nav-backup">Backup PDF</button>
 </nav>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  var campos = JSON.parse(localStorage.getItem('p_campos') || '[{"id":"nome","titulo":"Nome do Morador","gatilho":"DESTINAT"},{"id":"apto","titulo":"Apartamento / Bloco","gatilho":"APTO"},{"id":"transp","titulo":"Transportadora","gatilho":""},{"id":"rastreio","titulo":"Codigo / Rastreio","gatilho":"PEDIDO"}]');
-  var moradores = JSON.parse(localStorage.getItem('p_moradores') || '[]');
-  var encomendas = JSON.parse(localStorage.getItem('p_encomendas') || '[]');
-  var modelos = JSON.parse(localStorage.getItem('p_modelos') || '[{"transp":"Magalu","gatilho":"MAGALU","ancora":"DESTINAT"},{"transp":"Shopee","gatilho":"SHOPEE","ancora":"DESTINAT"},{"transp":"J&T Express","gatilho":"J&T","ancora":"DESTINAT"},{"transp":"Mercado Livre","gatilho":"SBA6","ancora":"NF:"}]');
-  var memoriaAprendida = JSON.parse(localStorage.getItem('p_memoria') || '[]');
-  var backupsDiarios = JSON.parse(localStorage.getItem('p_backups_pdf') || '{}');
+window.onerror = function(msg, url, line) {
+  var box = document.getElementById('visor-erro');
+  if (box) {
+    box.style.display = 'block';
+    box.textContent = 'Aviso do sistema (Linha ' + line + '): ' + msg;
+  }
+};
 
+document.addEventListener('DOMContentLoaded', function() {
+  var camposBase = JSON.parse(localStorage.getItem('p_campos') || '[{"id":"nome","titulo":"Nome do Morador","chave":"DESTINAT"},{"id":"apto","titulo":"Apartamento / Bloco","chave":"APTO"},{"id":"transp","titulo":"Transportadora / Loja","chave":""}]');
+  var moradores = JSON.parse(localStorage.getItem('p_moradores') || '[]');
+  var backupsPorDia = JSON.parse(localStorage.getItem('p_backups_pdf') || '{}');
+  var memoriaIA = JSON.parse(localStorage.getItem('p_memoria') || '[{"chave":"MAGALU","campo":"transp","valor":"Magalu Entregas"},{"chave":"SHOPEE","campo":"transp","valor":"Shopee"},{"chave":"SBA6","campo":"transp","valor":"Mercado Livre"},{"chave":"J&T","campo":"transp","valor":"J&T Express"}]');
+
+  var ultimoTextoLido = '';
   var fotoTitularTemp = '';
   var familiaresTemp = [];
-  var ultimoTextoOCR = '';
+  var editandoEncomendaIdx = -1;
 
-  function dataHojeStr() {
+  function obterDataHoje() {
     var d = new Date();
     var dia = ('0' + d.getDate()).slice(-2);
     var mes = ('0' + (d.getMonth() + 1)).slice(-2);
@@ -187,37 +191,32 @@ document.addEventListener('DOMContentLoaded', function() {
     return dia + '-' + mes + '-' + ano;
   }
 
-  function horaAgoraStr() {
-    var d = new Date();
-    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-  }
-
-  function trocarAba(nomeAba) {
+  function mudarAba(nome) {
     var telas = document.querySelectorAll('.tela');
-    for (var i = 0; i < telas.length; i++) telas[i].classList.remove('ativa');
-    var navs = document.querySelectorAll('.nav button');
-    for (var j = 0; j < navs.length; j++) navs[j].classList.remove('ativo');
-
-    document.getElementById('aba-' + nomeAba).classList.add('ativa');
-    var btnNav = document.getElementById('nav-' + nomeAba);
-    if (btnNav) btnNav.classList.add('ativo');
+    for (var i = 0; i < telas.length; i++) {
+      telas[i].classList.remove('ativa');
+    }
+    var btns = document.querySelectorAll('.nav button');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].classList.remove('ativo');
+    }
+    var alvo = document.getElementById('aba-' + nome);
+    if (alvo) alvo.classList.add('ativa');
+    var navBtn = document.getElementById('nav-' + nome);
+    if (navBtn) navBtn.classList.add('ativo');
     renderizarTudo();
   }
 
-  document.getElementById('nav-inicio').addEventListener('click', function() { trocarAba('inicio'); });
-  document.getElementById('nav-moradores').addEventListener('click', function() { trocarAba('moradores'); });
-  document.getElementById('nav-campos').addEventListener('click', function() { trocarAba('campos'); });
-  document.getElementById('nav-backup').addEventListener('click', function() { trocarAba('backup'); });
-  document.getElementById('btn-topo-morador').addEventListener('click', function() { trocarAba('moradores'); });
-  document.getElementById('btn-ir-campos').addEventListener('click', function() { trocarAba('campos'); });
+  // Eventos de navegacao
+  document.getElementById('nav-inicio').addEventListener('click', function() { mudarAba('inicio'); });
+  document.getElementById('nav-moradores').addEventListener('click', function() { mudarAba('moradores'); });
+  document.getElementById('nav-campos').addEventListener('click', function() { mudarAba('campos'); });
+  document.getElementById('nav-backup').addEventListener('click', function() { mudarAba('backup'); });
+  document.getElementById('btn-topo-morador').addEventListener('click', function() { mudarAba('moradores'); });
+  document.getElementById('btn-ir-campos').addEventListener('click', function() { mudarAba('campos'); });
 
-  document.getElementById('btn-ver-bruto').addEventListener('click', function() {
-    var box = document.getElementById('texto-bruto-box');
-    box.style.display = (box.style.display === 'block') ? 'none' : 'block';
-  });
-
-  // CAMERA REAL NATIVA DO CAPACITOR
-  document.getElementById('btn-camera-real').addEventListener('click', function() {
+  // Camera Nativa Capacitor ou Fallback
+  document.getElementById('btn-abrir-camera').addEventListener('click', function() {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Camera) {
       window.Capacitor.Plugins.Camera.getPhoto({
         quality: 85,
@@ -226,115 +225,73 @@ document.addEventListener('DOMContentLoaded', function() {
         source: 'CAMERA'
       }).then(function(image) {
         if (image && image.dataUrl) {
-          processarImagemBase64(image.dataUrl);
+          processarImagemOCR(image.dataUrl);
         }
       }).catch(function(err) {
-        alert('Camera fechada ou permissao negada.');
+        alert('Camera fechada ou sem permissao: ' + err);
       });
     } else {
-      // Fallback caso abra fora do APK
       document.getElementById('input-galeria').click();
     }
   });
 
-  // FOTO DA GALERIA
+  // Foto da Galeria
   document.getElementById('input-galeria').addEventListener('change', function(e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      processarImagemBase64(ev.target.result);
-    };
-    reader.readAsDataURL(file);
+    if (e.target.files && e.target.files[0]) {
+      processarImagemOCR(e.target.files[0]);
+    }
   });
 
-  // PRE-PROCESSAMENTO CONTRASTE + LEITURA OCR
-  function processarImagemBase64(dataUrl) {
+  function processarImagemOCR(fonteImagem) {
     var aviso = document.getElementById('aviso-ia');
     aviso.style.display = 'block';
-    aviso.textContent = 'Analisando imagem com IA estilo Lens... Aguarde.';
+    aviso.textContent = 'Lendo texto da etiqueta (Modo Lens)... Aguarde.';
 
-    var img = new Image();
-    img.onload = function() {
-      var canvas = document.createElement('canvas');
-      var escala = Math.min(1, 1200 / img.width);
-      canvas.width = img.width * escala;
-      canvas.height = img.height * escala;
-      var ctx = canvas.getContext('2d');
-      ctx.filter = 'grayscale(100%) contrast(150%)';
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      Tesseract.recognize(canvas.toDataURL('image/jpeg', 0.9), 'por').then(function(res) {
-        ultimoTextoOCR = res.data.text;
-        document.getElementById('texto-bruto-box').textContent = ultimoTextoOCR;
-        interpretarDadosLens(ultimoTextoOCR);
-        aviso.textContent = 'Leitura concluida! Confira ou edite os campos abaixo.';
-      }).catch(function() {
-        aviso.textContent = 'Nao foi possivel ler o texto. Tente aproximar mais a etiqueta.';
-      });
-    };
-    img.src = dataUrl;
-  }
-
-  function similaridade(s1, s2) {
-    s1 = s1.toLowerCase().trim();
-    s2 = s2.toLowerCase().trim();
-    if (!s1 || !s2) return 0;
-    if (s1.indexOf(s2) !== -1 || s2.indexOf(s1) !== -1) return 1;
-    var p1 = s1.split(/\s+/);
-    var p2 = s2.split(/\s+/);
-    var acertos = 0;
-    for (var i = 0; i < p2.length; i++) {
-      if (p2[i].length > 2 && s1.indexOf(p2[i]) !== -1) acertos++;
+    if (typeof Tesseract === 'undefined') {
+      aviso.textContent = 'Erro: Biblioteca de leitura sem internet. Preencha manualmente.';
+      return;
     }
-    return acertos / p2.length;
+
+    Tesseract.recognize(fonteImagem, 'por').then(function(res) {
+      ultimoTextoLido = res.data.text || '';
+      aplicarInteligencia(ultimoTextoLido);
+      aviso.textContent = 'Leitura concluida! Confira os dados abaixo.';
+    }).catch(function() {
+      aviso.textContent = 'Nao foi possivel ler a imagem. Tente novamente.';
+    });
   }
 
-  function interpretarDadosLens(texto) {
+  function aplicarInteligencia(texto) {
     var upper = texto.toUpperCase();
     var linhas = texto.split('
 ');
 
-    for (var i = 0; i < campos.length; i++) {
-      var el = document.getElementById('form-campo-' + campos[i].id);
+    for (var i = 0; i < camposBase.length; i++) {
+      var el = document.getElementById('campo-val-' + camposBase[i].id);
       if (el) el.value = '';
     }
 
-    // 1. Memoria aprendida
-    for (var m = 0; m < memoriaAprendida.length; m++) {
-      var mem = memoriaAprendida[m];
-      if (upper.indexOf(mem.chave) !== -1) {
-        var inp = document.getElementById('form-campo-' + mem.campo);
-        if (inp && !inp.value) inp.value = mem.valor;
+    for (var m = 0; m < memoriaIA.length; m++) {
+      var reg = memoriaIA[m];
+      if (upper.indexOf(reg.chave.toUpperCase()) !== -1) {
+        var alvo = document.getElementById('campo-val-' + reg.campo);
+        if (alvo && !alvo.value) alvo.value = reg.valor;
       }
     }
 
-    // 2. Modelos de transportadora
-    var ancoraNome = 'DESTINAT';
-    for (var t = 0; t < modelos.length; t++) {
-      if (upper.indexOf(modelos[t].gatilho.toUpperCase()) !== -1) {
-        var inTransp = document.getElementById('form-campo-transp');
-        if (inTransp && !inTransp.value) inTransp.value = modelos[t].transp;
-        ancoraNome = modelos[t].ancora.toUpperCase();
-        break;
-      }
-    }
-
-    // 3. Gatilhos dos campos
-    for (var c = 0; c < campos.length; c++) {
-      var cmp = campos[c];
-      var inputEl = document.getElementById('form-campo-' + cmp.id);
-      var gat = (cmp.id === 'nome') ? ancoraNome : cmp.gatilho.toUpperCase();
-      if (gat && inputEl && !inputEl.value) {
+    for (var c = 0; c < camposBase.length; c++) {
+      var campo = camposBase[c];
+      var inputCampo = document.getElementById('campo-val-' + campo.id);
+      if (campo.chave && inputCampo && !inputCampo.value) {
+        var gatilhoUpper = campo.chave.toUpperCase();
         for (var l = 0; l < linhas.length; l++) {
-          var lUp = linhas[l].toUpperCase();
-          var pos = lUp.indexOf(gat);
+          var pos = linhas[l].toUpperCase().indexOf(gatilhoUpper);
           if (pos !== -1) {
-            var val = linhas[l].substring(pos + gat.length).replace(/[:\-]/g, '').trim();
-            if (val.length > 1) {
-              inputEl.value = val;
+            var resto = linhas[l].substring(pos + campo.chave.length).replace(/[:\-]/g, '').trim();
+            if (resto.length > 1) {
+              inputCampo.value = resto;
             } else if (linhas[l + 1]) {
-              inputEl.value = linhas[l + 1].trim();
+              inputCampo.value = linhas[l + 1].trim();
             }
             break;
           }
@@ -342,30 +299,28 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    // 4. Busca Apto
-    var inApto = document.getElementById('form-campo-apto');
-    if (inApto && !inApto.value) {
-      var mApto = upper.match(/(APTO|APT|BLOCO)\s*([0-9A-Z]+)/);
-      if (mApto) inApto.value = 'Apto ' + mApto[2];
+    var inputApto = document.getElementById('campo-val-apto');
+    if (inputApto && !inputApto.value) {
+      var matchApto = upper.match(/(APTO|APT|BLOCO)\s*([0-9A-Z]+)/);
+      if (matchApto) inputApto.value = 'Apto ' + matchApto[2];
     }
 
-    // 5. Cruzamento com Moradores e Familiares
     var matchBox = document.getElementById('match-box');
     matchBox.style.display = 'none';
 
     for (var k = 0; k < moradores.length; k++) {
       var mor = moradores[k];
-      var encontrou = false;
+      var achou = false;
       var fotoExibir = mor.foto;
       var nomeExibir = mor.nome;
 
-      if (similaridade(upper, mor.nome) >= 0.75) {
-        encontrou = true;
+      if (mor.nome && upper.indexOf(mor.nome.toUpperCase()) !== -1) {
+        achou = true;
       } else if (mor.familiares) {
         for (var f = 0; f < mor.familiares.length; f++) {
           var fam = mor.familiares[f];
-          if (fam.nome && similaridade(upper, fam.nome) >= 0.75) {
-            encontrou = true;
+          if (fam.nome && upper.indexOf(fam.nome.toUpperCase()) !== -1) {
+            achou = true;
             nomeExibir = fam.nome + ' (' + fam.parentesco + ' - ' + mor.nome + ')';
             if (fam.foto) fotoExibir = fam.foto;
             break;
@@ -373,11 +328,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      if (encontrou) {
-        var elN = document.getElementById('form-campo-nome');
-        var elA = document.getElementById('form-campo-apto');
-        if (elN) elN.value = nomeExibir;
-        if (elA) elA.value = mor.apto;
+      if (achou) {
+        var inNome = document.getElementById('campo-val-nome');
+        var inApto = document.getElementById('campo-val-apto');
+        if (inNome) inNome.value = nomeExibir;
+        if (inApto) inApto.value = mor.apto;
 
         matchBox.style.display = 'block';
         document.getElementById('match-titulo').textContent = 'Cadastro Encontrado: ' + mor.apto;
@@ -394,109 +349,89 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // SALVAR ENCOMENDA + APRENDIZADO + BACKUP DIARIO
+  // Salvar Entrada / Edicao de Encomenda
   document.getElementById('btn-salvar-encomenda').addEventListener('click', function() {
-    var registroDados = {};
-    for (var i = 0; i < campos.length; i++) {
-      var c = campos[i];
-      var val = document.getElementById('form-campo-' + c.id).value.trim();
-      registroDados[c.titulo] = val;
+    var dados = {};
+    for (var i = 0; i < camposBase.length; i++) {
+      var id = camposBase[i].id;
+      var el = document.getElementById('campo-val-' + id);
+      var val = el ? el.value.trim() : '';
+      dados[camposBase[i].titulo] = val;
 
-      // IA aprende com a correcao manual
-      if (ultimoTextoOCR && val.length > 2 && c.id === 'transp') {
-        var palavras = ultimoTextoOCR.toUpperCase().split(/\s+/);
+      if (ultimoTextoLido && val.length > 2 && id === 'transp') {
+        var palavras = ultimoTextoLido.toUpperCase().split(/\s+/);
         for (var p = 0; p < palavras.length; p++) {
           var pal = palavras[p].replace(/[^A-Z0-9]/g, '');
           if (pal.length >= 5 && pal !== 'DESTINATARIO' && pal !== 'REMETENTE') {
-            memoriaAprendida.unshift({ chave: pal, campo: c.id, valor: val });
+            memoriaIA.unshift({ chave: pal, campo: id, valor: val });
             break;
           }
         }
       }
     }
-    localStorage.setItem('p_memoria', JSON.stringify(memoriaAprendida));
 
-    var novaEnc = {
-      id: Date.now(),
-      data: dataHojeStr(),
-      horaEntrada: horaAgoraStr(),
-      horaSaida: '',
-      retiradoPor: '',
-      status: 'Na Portaria',
-      dados: registroDados
-    };
+    localStorage.setItem('p_memoria', JSON.stringify(memoriaIA));
 
-    encomendas.unshift(novaEnc);
-    localStorage.setItem('p_encomendas', JSON.stringify(encomendas));
+    var dataHoje = obterDataHoje();
+    if (!backupsPorDia[dataHoje]) {
+      backupsPorDia[dataHoje] = [];
+    }
 
-    atualizarPastaBackupPDF();
+    var hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-    ultimoTextoOCR = '';
+    if (editandoEncomendaIdx >= 0) {
+      backupsPorDia[dataHoje][editandoEncomendaIdx].dados = dados;
+      editandoEncomendaIdx = -1;
+      document.getElementById('btn-salvar-encomenda').textContent = 'Salvar Entrada & Backup PDF';
+    } else {
+      backupsPorDia[dataHoje].unshift({
+        horaEntrada: hora,
+        horaSaida: '',
+        retiradoPor: '',
+        status: 'Pendente',
+        dados: dados
+      });
+    }
+
+    localStorage.setItem('p_backups_pdf', JSON.stringify(backupsPorDia));
+    ultimoTextoLido = '';
     document.getElementById('match-box').style.display = 'none';
     document.getElementById('aviso-ia').style.display = 'none';
     renderizarTudo();
-    alert('Entrada registrada e backup atualizado!');
+    alert('Registro salvo e backup diario atualizado!');
   });
 
-  function atualizarPastaBackupPDF() {
-    var hoje = dataHojeStr();
-    var listaDoDia = [];
-    for (var i = 0; i < encomendas.length; i++) {
-      if (encomendas[i].data === hoje) {
-        listaDoDia.push(encomendas[i]);
-      }
-    }
-    backupsDiarios[hoje] = {
-      nomeArquivo: 'backup_portaria_' + hoje + '.pdf',
-      data: hoje,
-      ultimaAtualizacao: horaAgoraStr(),
-      registros: listaDoDia
-    };
-    localStorage.setItem('p_backups_pdf', JSON.stringify(backupsDiarios));
-  }
-
-  function baixarPDFDoDia(dataChave) {
-    var bkp = backupsDiarios[dataChave];
-    if (!bkp || !window.jspdf) {
-      alert('Biblioteca PDF carregando. Verifique a internet ou tente novamente.');
+  // Gerenciar Campos
+  document.getElementById('btn-criar-campo').addEventListener('click', function() {
+    var titulo = document.getElementById('novo-campo-titulo').value.trim();
+    var chave = document.getElementById('novo-campo-chave').value.trim();
+    if (!titulo) {
+      alert('Digite o nome do campo.');
       return;
     }
-    var doc = new window.jspdf.jsPDF();
-    doc.setFontSize(14);
-    doc.text('Pasta: backup dados PDF - Data: ' + bkp.data, 14, 18);
-    doc.setFontSize(10);
-    doc.text('Atualizado as: ' + bkp.ultimaAtualizacao + ' | Total: ' + bkp.registros.length, 14, 25);
-
-    var y = 36;
-    for (var i = 0; i < bkp.registros.length; i++) {
-      var r = bkp.registros[i];
-      var linha = (i + 1) + '. [' + r.status + '] Ent: ' + r.horaEntrada;
-      if (r.horaSaida) linha += ' | Sai: ' + r.horaSaida + ' (' + r.retiradoPor + ')';
-      for (var k in r.dados) {
-        if (r.dados[k]) linha += ' | ' + k + ': ' + r.dados[k];
-      }
-      var linhasQuebradas = doc.splitTextToSize(linha, 180);
-      doc.text(linhasQuebradas, 14, y);
-      y += (linhasQuebradas.length * 6) + 4;
-      if (y > 275) { doc.addPage(); y = 20; }
-    }
-    doc.save('backup_dados_PDF_' + bkp.data + '.pdf');
-  }
-
-  // MORADORES E FAMILIARES
-  document.getElementById('input-foto-titular').addEventListener('change', function(e) {
-    comprimirFoto(e.target.files[0], function(b64) {
-      fotoTitularTemp = b64;
-      var prev = document.getElementById('prev-foto-titular');
-      prev.src = b64;
-      prev.style.display = 'block';
-    });
+    camposBase.push({ id: 'c_' + Date.now(), titulo: titulo, chave: chave });
+    localStorage.setItem('p_campos', JSON.stringify(camposBase));
+    document.getElementById('novo-campo-titulo').value = '';
+    document.getElementById('novo-campo-chave').value = '';
+    renderizarTudo();
+    alert('Campo adicionado!');
   });
 
-  function comprimirFoto(file, callback) {
-    if (!file) return;
+  // Foto Titular
+  document.getElementById('input-foto-titular').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+      comprimirImagem(e.target.files[0], function(base64) {
+        fotoTitularTemp = base64;
+        var prev = document.getElementById('prev-titular');
+        prev.src = base64;
+        prev.style.display = 'block';
+      });
+    }
+  });
+
+  function comprimirImagem(file, callback) {
     var reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function(ev) {
       var img = new Image();
       img.onload = function() {
         var canvas = document.createElement('canvas');
@@ -506,96 +441,91 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.drawImage(img, 0, 0, 140, 140);
         callback(canvas.toDataURL('image/jpeg', 0.7));
       };
-      img.src = e.target.result;
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
   }
 
+  // Familiares
   document.getElementById('btn-add-familiar').addEventListener('click', function() {
     familiaresTemp.push({ nome: '', parentesco: '', foto: '' });
     renderizarFamiliaresTemp();
   });
 
   function renderizarFamiliaresTemp() {
-    var box = document.getElementById('box-familiares-form');
+    var box = document.getElementById('box-familiares');
     box.innerHTML = '';
     for (var i = 0; i < familiaresTemp.length; i++) {
       (function(idx) {
         var f = familiaresTemp[idx];
-        var div = document.createElement('div');
-        div.className = 'item';
+        var item = document.createElement('div');
+        item.className = 'item';
 
-        var lbl1 = document.createElement('label');
-        lbl1.textContent = 'Nome do Familiar / Morador ' + (idx + 1);
-        var inp1 = document.createElement('input');
-        inp1.type = 'text';
-        inp1.value = f.nome;
-        inp1.placeholder = 'Nome completo';
-        inp1.addEventListener('input', function() { familiaresTemp[idx].nome = this.value; });
+        var l1 = document.createElement('label');
+        l1.textContent = 'Nome do Familiar ' + (idx + 1);
+        var inNome = document.createElement('input');
+        inNome.type = 'text';
+        inNome.value = f.nome;
+        inNome.placeholder = 'Nome completo';
+        inNome.addEventListener('input', function() { familiaresTemp[idx].nome = this.value; });
 
-        var lbl2 = document.createElement('label');
-        lbl2.textContent = 'Parentesco';
-        var inp2 = document.createElement('input');
-        inp2.type = 'text';
-        inp2.value = f.parentesco;
-        inp2.placeholder = 'Ex: Esposa, Filho, Morador';
-        inp2.addEventListener('input', function() { familiaresTemp[idx].parentesco = this.value; });
+        var l2 = document.createElement('label');
+        l2.textContent = 'Parentesco';
+        var inPar = document.createElement('input');
+        inPar.type = 'text';
+        inPar.value = f.parentesco;
+        inPar.placeholder = 'Ex: Esposa, Filho';
+        inPar.addEventListener('input', function() { familiaresTemp[idx].parentesco = this.value; });
 
-        var lbl3 = document.createElement('label');
-        lbl3.textContent = 'Foto';
-        var inp3 = document.createElement('input');
-        inp3.type = 'file';
-        inp3.accept = 'image/*';
-        inp3.addEventListener('change', function(ev) {
-          comprimirFoto(ev.target.files[0], function(b64) {
-            familiaresTemp[idx].foto = b64;
-            renderizarFamiliaresTemp();
-          });
+        var l3 = document.createElement('label');
+        l3.textContent = 'Foto';
+        var inFoto = document.createElement('input');
+        inFoto.type = 'file';
+        inFoto.accept = 'image/*';
+        inFoto.addEventListener('change', function(e) {
+          if (e.target.files && e.target.files[0]) {
+            comprimirImagem(e.target.files[0], function(b64) {
+              familiaresTemp[idx].foto = b64;
+              renderizarFamiliaresTemp();
+            });
+          }
         });
 
-        div.appendChild(lbl1);
-        div.appendChild(inp1);
-        div.appendChild(lbl2);
-        div.appendChild(inp2);
-        div.appendChild(lbl3);
-        div.appendChild(inp3);
+        item.appendChild(l1);
+        item.appendChild(inNome);
+        item.appendChild(l2);
+        item.appendChild(inPar);
+        item.appendChild(l3);
+        item.appendChild(inFoto);
 
         if (f.foto) {
-          var im = document.createElement('img');
-          im.src = f.foto;
-          im.style.width = '45px';
-          im.style.height = '45px';
-          im.style.borderRadius = '6px';
-          im.style.marginTop = '6px';
-          div.appendChild(im);
+          var img = document.createElement('img');
+          img.src = f.foto;
+          img.style.width = '45px';
+          img.style.height = '45px';
+          img.style.borderRadius = '6px';
+          img.style.marginTop = '6px';
+          item.appendChild(img);
         }
 
-        var btnRem = document.createElement('button');
-        btnRem.className = 'btn-vermelho';
-        btnRem.textContent = 'Remover Familiar';
-        btnRem.addEventListener('click', function() {
-          familiaresTemp.splice(idx, 1);
-          renderizarFamiliaresTemp();
-        });
-        div.appendChild(btnRem);
-
-        box.appendChild(div);
+        box.appendChild(item);
       })(i);
     }
   }
 
+  // Salvar Morador
   document.getElementById('btn-salvar-morador').addEventListener('click', function() {
-    var apto = document.getElementById('mor-apto').value.trim();
-    var nome = document.getElementById('mor-nome').value.trim();
-    var whats = document.getElementById('mor-whats').value.trim();
+    var apto = document.getElementById('cad-apto').value.trim();
+    var nome = document.getElementById('cad-nome').value.trim();
+    var whats = document.getElementById('cad-whats').value.trim();
     var editIdx = parseInt(document.getElementById('edit-morador-idx').value, 10);
 
     if (!apto || !nome) {
-      alert('Preencha Apartamento e Nome do Titular.');
+      alert('Preencha o Apartamento e o Nome.');
       return;
     }
 
-    var objMor = {
+    var registro = {
       apto: apto,
       nome: nome,
       whats: whats,
@@ -604,18 +534,18 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     if (editIdx >= 0) {
-      moradores[editIdx] = objMor;
+      moradores[editIdx] = registro;
+      document.getElementById('edit-morador-idx').value = '-1';
+      document.getElementById('titulo-form-morador').textContent = 'Cadastrar Morador & Familia';
     } else {
-      moradores.unshift(objMor);
+      moradores.unshift(registro);
     }
 
     localStorage.setItem('p_moradores', JSON.stringify(moradores));
-    document.getElementById('edit-morador-idx').value = '-1';
-    document.getElementById('titulo-form-morador').textContent = 'Cadastrar Morador & Familia';
-    document.getElementById('mor-apto').value = '';
-    document.getElementById('mor-nome').value = '';
-    document.getElementById('mor-whats').value = '';
-    document.getElementById('prev-foto-titular').style.display = 'none';
+    document.getElementById('cad-apto').value = '';
+    document.getElementById('cad-nome').value = '';
+    document.getElementById('cad-whats').value = '';
+    document.getElementById('prev-titular').style.display = 'none';
     fotoTitularTemp = '';
     familiaresTemp = [];
     renderizarFamiliaresTemp();
@@ -623,247 +553,253 @@ document.addEventListener('DOMContentLoaded', function() {
     alert('Cadastro salvo com sucesso!');
   });
 
-  // CAMPOS E MODELOS
-  document.getElementById('btn-criar-campo').addEventListener('click', function() {
-    var nome = document.getElementById('novo-campo-nome').value.trim();
-    var gatilho = document.getElementById('novo-campo-gatilho').value.trim();
-    if (!nome) return;
-    campos.push({ id: 'c_' + Date.now(), titulo: nome, gatilho: gatilho });
-    localStorage.setItem('p_campos', JSON.stringify(campos));
-    document.getElementById('novo-campo-nome').value = '';
-    document.getElementById('novo-campo-gatilho').value = '';
-    renderizarTudo();
-    alert('Campo adicionado!');
-  });
-
-  document.getElementById('btn-salvar-modelo').addEventListener('click', function() {
-    var transp = document.getElementById('mod-transp').value.trim();
-    var gatilho = document.getElementById('mod-gatilho').value.trim();
-    var ancora = document.getElementById('mod-ancora').value.trim() || 'DESTINAT';
-    if (!transp || !gatilho) return;
-    modelos.unshift({ transp: transp, gatilho: gatilho, ancora: ancora });
-    localStorage.setItem('p_modelos', JSON.stringify(modelos));
-    document.getElementById('mod-transp').value = '';
-    document.getElementById('mod-gatilho').value = '';
-    document.getElementById('mod-ancora').value = '';
-    renderizarTudo();
-    alert('Modelo ensinado!');
-  });
+  function baixarArquivoPDF(dataStr) {
+    if (typeof window.jspdf === 'undefined') {
+      alert('Biblioteca PDF indisponivel offline.');
+      return;
+    }
+    var lista = backupsPorDia[dataStr] || [];
+    var doc = new window.jspdf.jsPDF();
+    doc.setFontSize(14);
+    doc.text('Pasta: backup dados PDF - Arquivo: ' + dataStr + '.pdf', 14, 18);
+    doc.setFontSize(10);
+    var y = 30;
+    for (var i = 0; i < lista.length; i++) {
+      var item = lista[i];
+      var linha = (i + 1) + '. [' + item.status + ' | Ent: ' + item.horaEntrada + (item.horaSaida ? ' | Sai: ' + item.horaSaida + ' (' + item.retiradoPor + ')' : '') + '] ';
+      for (var k in item.dados) {
+        if (item.dados[k]) linha += k + ': ' + item.dados[k] + ' | ';
+      }
+      var linhasQuebradas = doc.splitTextToSize(linha, 180);
+      doc.text(linhasQuebradas, 14, y);
+      y += (linhasQuebradas.length * 6) + 4;
+      if (y > 275) { doc.addPage(); y = 20; }
+    }
+    doc.save('backup_dados_PDF_' + dataStr + '.pdf');
+  }
 
   function renderizarTudo() {
-    // 1. Formulario dinamico
-    var formDiv = document.getElementById('formulario-campos');
+    // 1. Formulario Dinamico
+    var formDiv = document.getElementById('formulario-dinamico');
     formDiv.innerHTML = '';
-    for (var i = 0; i < campos.length; i++) {
-      var c = campos[i];
+    for (var c = 0; c < camposBase.length; c++) {
+      var campo = camposBase[c];
       var lbl = document.createElement('label');
-      lbl.textContent = c.titulo;
+      lbl.textContent = campo.titulo;
       var inp = document.createElement('input');
       inp.type = 'text';
-      inp.id = 'form-campo-' + c.id;
-      inp.placeholder = 'Digite ou escaneie...';
+      inp.id = 'campo-val-' + campo.id;
+      inp.placeholder = 'Preenchido pela IA ou manualmente';
       formDiv.appendChild(lbl);
       formDiv.appendChild(inp);
     }
 
-    // 2. Lista de encomendas
-    var encDiv = document.getElementById('lista-encomendas');
-    encDiv.innerHTML = '';
-    if (encomendas.length === 0) {
-      encDiv.innerHTML = '<p style="font-size:13px;color:#94a3b8;">Nenhuma encomenda registrada.</p>';
+    // 2. Lista de Encomendas de Hoje
+    var dataHoje = obterDataHoje();
+    var listaHoje = backupsPorDia[dataHoje] || [];
+    var divEnc = document.getElementById('lista-encomendas');
+    divEnc.innerHTML = '';
+
+    if (listaHoje.length === 0) {
+      divEnc.innerHTML = '<p style="font-size:13px;color:#94a3b8;">Nenhuma encomenda registrada hoje.</p>';
     } else {
-      for (var e = 0; e < encomendas.length; e++) {
+      for (var i = 0; i < listaHoje.length; i++) {
         (function(idx) {
-          var item = encomendas[idx];
+          var enc = listaHoje[idx];
           var box = document.createElement('div');
           box.className = 'item';
 
-          var badge = item.status === 'Entregue' ? '<span class="badge-entregue">Entregue</span>' : '<span class="badge-pendente">Na Portaria</span>';
-          var infoHtml = badge + ' <small style="color:#94a3b8;">' + item.data + ' - Ent: ' + item.horaEntrada + '</small><br>';
-          var msgZap = 'Ola! Chegou uma encomenda na portaria (' + item.data + ' as ' + item.horaEntrada + '). ';
+          var badge = document.createElement('span');
+          badge.className = 'badge-status ' + (enc.status === 'Retirado' ? 'st-retirado' : 'st-pendente');
+          badge.textContent = enc.status + ' • Entrada: ' + enc.horaEntrada + (enc.horaSaida ? ' | Saida: ' + enc.horaSaida : '');
+          box.appendChild(badge);
 
-          for (var k in item.dados) {
-            if (item.dados[k]) {
-              infoHtml += '<strong>' + k + ':</strong> ' + item.dados[k] + '<br>';
-              msgZap += k + ': ' + item.dados[k] + ' | ';
-            }
+          var info = document.createElement('div');
+          info.style.fontSize = '13px';
+          info.style.marginTop = '4px';
+          var txt = '';
+          for (var k in enc.dados) {
+            if (enc.dados[k]) txt += '<strong>' + k + ':</strong> ' + enc.dados[k] + '<br>';
           }
-          if (item.horaSaida) {
-            infoHtml += '<small style="color:#6ee7b7;">Retirado as ' + item.horaSaida + ' por: ' + item.retiradoPor + '</small><br>';
-          }
+          if (enc.retiradoPor) txt += '<strong>Retirado por:</strong> ' + enc.retiradoPor + '<br>';
+          info.innerHTML = txt;
+          box.appendChild(info);
 
-          var conteudo = document.createElement('div');
-          conteudo.innerHTML = infoHtml;
-          box.appendChild(conteudo);
-
-          if (item.status !== 'Entregue') {
+          if (enc.status !== 'Retirado') {
             var btnBaixa = document.createElement('button');
-            btnBaixa.className = 'btn-pequeno';
-            btnBaixa.style.background = '#10b981';
-            btnBaixa.style.color = '#022c22';
-            btnBaixa.textContent = 'Dar Baixa (Saida)';
+            btnBaixa.type = 'button';
+            btnBaixa.className = 'btn-pequeno btn-verde';
+            btnBaixa.textContent = 'Dar Saida';
             btnBaixa.addEventListener('click', function() {
-              var quem = prompt('Nome de quem retirou a encomenda:');
+              var quem = prompt('Quem retirou a encomenda?');
               if (quem) {
-                encomendas[idx].status = 'Entregue';
-                encomendas[idx].horaSaida = horaAgoraStr();
-                encomendas[idx].retiradoPor = quem;
-                localStorage.setItem('p_encomendas', JSON.stringify(encomendas));
-                atualizarPastaBackupPDF();
+                backupsPorDia[dataHoje][idx].status = 'Retirado';
+                backupsPorDia[dataHoje][idx].retiradoPor = quem;
+                backupsPorDia[dataHoje][idx].horaSaida = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                localStorage.setItem('p_backups_pdf', JSON.stringify(backupsPorDia));
                 renderizarTudo();
               }
             });
             box.appendChild(btnBaixa);
           }
 
-          var linkZap = document.createElement('a');
-          linkZap.href = 'https://wa.me/?text=' + encodeURIComponent(msgZap);
-          linkZap.target = '_blank';
-          linkZap.className = 'btn-pequeno';
-          linkZap.style.background = '#25d366';
-          linkZap.style.color = '#052e16';
-          linkZap.style.textDecoration = 'none';
-          linkZap.style.display = 'inline-block';
-          linkZap.textContent = 'WhatsApp';
-          box.appendChild(linkZap);
+          var btnEditar = document.createElement('button');
+          btnEditar.type = 'button';
+          btnEditar.className = 'btn-pequeno btn-amarelo';
+          btnEditar.textContent = 'Editar';
+          btnEditar.addEventListener('click', function() {
+            editandoEncomendaIdx = idx;
+            for (var f = 0; f < camposBase.length; f++) {
+              var el = document.getElementById('campo-val-' + camposBase[f].id);
+              if (el) el.value = enc.dados[camposBase[f].titulo] || '';
+            }
+            document.getElementById('btn-salvar-encomenda').textContent = 'Atualizar Registro & Backup PDF';
+            window.scrollTo(0, 0);
+          });
+          box.appendChild(btnEditar);
+
+          var btnExcluir = document.createElement('button');
+          btnExcluir.type = 'button';
+          btnExcluir.className = 'btn-pequeno btn-vermelho';
+          btnExcluir.textContent = 'Excluir';
+          btnExcluir.addEventListener('click', function() {
+            if (confirm('Excluir este registro?')) {
+              backupsPorDia[dataHoje].splice(idx, 1);
+              localStorage.setItem('p_backups_pdf', JSON.stringify(backupsPorDia));
+              renderizarTudo();
+            }
+          });
+          box.appendChild(btnExcluir);
+
+          divEnc.appendChild(box);
+        })(i);
+      }
+    }
+
+    // 3. Lista de Moradores
+    var divMor = document.getElementById('lista-moradores');
+    divMor.innerHTML = '';
+    if (moradores.length === 0) {
+      divMor.innerHTML = '<p style="font-size:13px;color:#94a3b8;">Nenhum morador cadastrado.</p>';
+    } else {
+      for (var m = 0; m < moradores.length; m++) {
+        (function(mIdx) {
+          var mor = moradores[mIdx];
+          var box = document.createElement('div');
+          box.className = 'item';
+
+          var row = document.createElement('div');
+          row.className = 'flex-row';
+          if (mor.foto) {
+            var img = document.createElement('img');
+            img.src = mor.foto;
+            img.className = 'foto-perfil';
+            row.appendChild(img);
+          }
+          var txtDiv = document.createElement('div');
+          txtDiv.innerHTML = '<strong>' + mor.apto + ' - ' + mor.nome + '</strong><br><small style="color:#94a3b8;">Whats: ' + (mor.whats || '-') + ' | Familiares: ' + (mor.familiares ? mor.familiares.length : 0) + '</small>';
+          row.appendChild(txtDiv);
+          box.appendChild(row);
+
+          var btnAlt = document.createElement('button');
+          btnAlt.type = 'button';
+          btnAlt.className = 'btn-pequeno btn-amarelo';
+          btnAlt.textContent = 'Alterar';
+          btnAlt.addEventListener('click', function() {
+            document.getElementById('edit-morador-idx').value = mIdx;
+            document.getElementById('titulo-form-morador').textContent = 'Alterar Morador: ' + mor.apto;
+            document.getElementById('cad-apto').value = mor.apto;
+            document.getElementById('cad-nome').value = mor.nome;
+            document.getElementById('cad-whats').value = mor.whats;
+            fotoTitularTemp = mor.foto || '';
+            if (fotoTitularTemp) {
+              var prev = document.getElementById('prev-titular');
+              prev.src = fotoTitularTemp;
+              prev.style.display = 'block';
+            }
+            familiaresTemp = mor.familiares ? JSON.parse(JSON.stringify(mor.familiares)) : [];
+            renderizarFamiliaresTemp();
+            window.scrollTo(0, 0);
+          });
+          box.appendChild(btnAlt);
 
           var btnDel = document.createElement('button');
-          btnDel.className = 'btn-pequeno';
-          btnDel.style.background = '#ef4444';
-          btnDel.style.color = 'white';
+          btnDel.type = 'button';
+          btnDel.className = 'btn-pequeno btn-vermelho';
           btnDel.textContent = 'Excluir';
           btnDel.addEventListener('click', function() {
-            if (confirm('Excluir este registro?')) {
-              encomendas.splice(idx, 1);
-              localStorage.setItem('p_encomendas', JSON.stringify(encomendas));
-              atualizarPastaBackupPDF();
+            if (confirm('Excluir cadastro deste morador?')) {
+              moradores.splice(mIdx, 1);
+              localStorage.setItem('p_moradores', JSON.stringify(moradores));
               renderizarTudo();
             }
           });
           box.appendChild(btnDel);
 
-          encDiv.appendChild(box);
-        })(e);
+          divMor.appendChild(box);
+        })(m);
       }
     }
 
-    // 3. Lista de moradores
-    var morDiv = document.getElementById('lista-moradores');
-    morDiv.innerHTML = '';
-    for (var m = 0; m < moradores.length; m++) {
-      (function(idx) {
-        var mor = moradores[idx];
-        var box = document.createElement('div');
-        box.className = 'item';
-
-        var top = document.createElement('div');
-        top.className = 'flex-row';
-        if (mor.foto) {
-          var im = document.createElement('img');
-          im.src = mor.foto;
-          im.className = 'foto-perfil';
-          top.appendChild(im);
-        }
-        var txt = document.createElement('div');
-        txt.innerHTML = '<strong>' + mor.apto + ' - ' + mor.nome + '</strong><br><small style="color:#94a3b8;">Familiares: ' + (mor.familiares ? mor.familiares.length : 0) + '</small>';
-        top.appendChild(txt);
-        box.appendChild(top);
-
-        var btnEdit = document.createElement('button');
-        btnEdit.className = 'btn-pequeno';
-        btnEdit.style.background = '#3b82f6';
-        btnEdit.style.color = 'white';
-        btnEdit.textContent = 'Alterar';
-        btnEdit.addEventListener('click', function() {
-          document.getElementById('edit-morador-idx').value = idx;
-          document.getElementById('titulo-form-morador').textContent = 'Alterar Morador: ' + mor.apto;
-          document.getElementById('mor-apto').value = mor.apto;
-          document.getElementById('mor-nome').value = mor.nome;
-          document.getElementById('mor-whats').value = mor.whats;
-          fotoTitularTemp = mor.foto || '';
-          if (fotoTitularTemp) {
-            var p = document.getElementById('prev-foto-titular');
-            p.src = fotoTitularTemp;
-            p.style.display = 'block';
-          }
-          familiaresTemp = mor.familiares ? JSON.parse(JSON.stringify(mor.familiares)) : [];
-          renderizarFamiliaresTemp();
-          window.scrollTo(0, 0);
-        });
-        box.appendChild(btnEdit);
-
-        var btnExc = document.createElement('button');
-        btnExc.className = 'btn-pequeno';
-        btnExc.style.background = '#ef4444';
-        btnExc.style.color = 'white';
-        btnExc.textContent = 'Excluir';
-        btnExc.addEventListener('click', function() {
-          if (confirm('Excluir morador?')) {
-            moradores.splice(idx, 1);
-            localStorage.setItem('p_moradores', JSON.stringify(moradores));
-            renderizarTudo();
-          }
-        });
-        box.appendChild(btnExc);
-
-        morDiv.appendChild(box);
-      })(m);
-    }
-
-    // 4. Campos configurados
-    var cmpDiv = document.getElementById('lista-campos-ativos');
-    cmpDiv.innerHTML = '';
-    for (var x = 0; x < campos.length; x++) {
-      (function(idx) {
-        var box = document.createElement('div');
-        box.className = 'item';
-        box.innerHTML = '<strong>' + campos[idx].titulo + '</strong> <small>(Gatilho: ' + (campos[idx].gatilho || 'Livre') + ')</small>';
-        if (idx >= 4) {
-          var bDel = document.createElement('button');
-          bDel.className = 'btn-vermelho';
-          bDel.style.marginLeft = '8px';
-          bDel.textContent = 'Excluir';
-          bDel.addEventListener('click', function() {
-            campos.splice(idx, 1);
-            localStorage.setItem('p_campos', JSON.stringify(campos));
+    // 4. Campos Configurados
+    var divCampos = document.getElementById('lista-campos-config');
+    divCampos.innerHTML = '';
+    for (var x = 0; x < camposBase.length; x++) {
+      (function(cIdx) {
+        var cp = camposBase[cIdx];
+        var item = document.createElement('div');
+        item.className = 'item';
+        item.innerHTML = '<strong>' + cp.titulo + '</strong> <small>(Chave: ' + (cp.chave || 'Livre') + ')</small>';
+        if (cIdx >= 3) {
+          var btnRem = document.createElement('button');
+          btnRem.type = 'button';
+          btnRem.className = 'btn-pequeno btn-vermelho';
+          btnRem.textContent = 'Excluir Campo';
+          btnRem.addEventListener('click', function() {
+            camposBase.splice(cIdx, 1);
+            localStorage.setItem('p_campos', JSON.stringify(camposBase));
             renderizarTudo();
           });
-          box.appendChild(bDel);
+          item.appendChild(document.createElement('br'));
+          item.appendChild(btnRem);
         }
-        cmpDiv.appendChild(box);
+        divCampos.appendChild(item);
       })(x);
     }
 
-    // 5. Modelos
-    var modDiv = document.getElementById('lista-modelos');
-    modDiv.innerHTML = '';
-    for (var y = 0; y < modelos.length; y++) {
-      var mBox = document.createElement('div');
-      mBox.className = 'item';
-      mBox.innerHTML = '<strong>' + modelos[y].transp + '</strong> <small>(Gatilho: ' + modelos[y].gatilho + ')</small>';
-      modDiv.appendChild(mBox);
+    // 5. Memoria IA
+    var divMem = document.getElementById('lista-memoria-ia');
+    divMem.innerHTML = '';
+    for (var y = 0; y < memoriaIA.length; y++) {
+      var mItem = document.createElement('div');
+      mItem.className = 'item';
+      mItem.innerHTML = '<small>Palavra: <strong>' + memoriaIA[y].chave + '</strong> -> Preenche: <strong>' + memoriaIA[y].valor + '</strong></small>';
+      divMem.appendChild(mItem);
     }
 
     // 6. Pasta Backup Dados PDF
-    var bkpDiv = document.getElementById('lista-backups-pdf');
-    bkpDiv.innerHTML = '';
-    var datas = Object.keys(backupsDiarios).reverse();
+    var divBkp = document.getElementById('lista-backups-pdf');
+    divBkp.innerHTML = '';
+    var datas = Object.keys(backupsPorDia).reverse();
     if (datas.length === 0) {
-      bkpDiv.innerHTML = '<p style="font-size:13px;color:#94a3b8;">Nenhum backup gerado ainda. Salve uma encomenda para criar o arquivo do dia.</p>';
+      divBkp.innerHTML = '<p style="font-size:13px;color:#94a3b8;">Nenhum backup gerado ainda.</p>';
     } else {
-      for (var z = 0; z < datas.length; z++) {
+      for (var d = 0; d < datas.length; d++) {
         (function(dt) {
-          var b = backupsDiarios[dt];
-          var box = document.createElement('div');
-          box.className = 'item';
-          box.innerHTML = '<strong>📁 backup dados PDF / ' + b.nomeArquivo + '</strong><br><small style="color:#94a3b8;">Registros: ' + b.registros.length + ' | Atualizado as ' + b.ultimaAtualizacao + '</small><br>';
-          var btnPdf = document.createElement('button');
-          btnPdf.className = 'btn btn-azul';
-          btnPdf.textContent = 'Baixar / Abrir PDF de ' + b.data;
-          btnPdf.addEventListener('click', function() { baixarPDFDoDia(dt); });
-          box.appendChild(btnPdf);
-          bkpDiv.appendChild(box);
-        })(datas[z]);
+          var qtd = backupsPorDia[dt].length;
+          var bItem = document.createElement('div');
+          bItem.className = 'item';
+          bItem.innerHTML = '<strong>Arquivo: backup_dados_PDF_' + dt + '.pdf</strong><br><small style="color:#94a3b8;">Registros salvos neste dia: ' + qtd + '</small><br>';
+          var btnBaixar = document.createElement('button');
+          btnBaixar.type = 'button';
+          btnBaixar.className = 'btn-pequeno btn-verde';
+          btnBaixar.textContent = 'Exportar / Baixar PDF do Dia';
+          btnBaixar.addEventListener('click', function() {
+            baixarArquivoPDF(dt);
+          });
+          bItem.appendChild(btnBaixar);
+          divBkp.appendChild(bItem);
+        })(datas[d]);
       }
     }
   }
