@@ -1,9 +1,10 @@
 {
   "name": "portaria-encomendas",
-  "version": "1.0.0",
-  "description": "Sistema de Portaria Inteligente com IA",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Gestor de encomendas para portaria com IA e PDF local",
   "scripts": {
-    "build": "mkdir -p www && cp index.html www/index.html"
+    "build": "mkdir -p www && cp index.html www/index.html && cp styles.css www/styles.css && cp app.js www/app.js"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
