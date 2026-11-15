@@ -38,35 +38,28 @@ function localDateKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function localTime(date = new Date()) {
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
 function emptyForm() {
-  return { resident: '', apartment: '', carrier: '', tracking: '' };
+  return { resident: '', apartment: '', carrier: '', tracking: '', additionalDetails: [] };
 }
 
 function emptyResidentForm() {
-  return {
-    name: '',
-    apartment: '',
-    phone: '',
-    photo: '',
-    family: [],
-  };
+  return { name: '', apartment: '', phone: '', photo: '', family: [] };
 }
 
 function normalize(value = '') {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase('pt-BR');
+  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase('pt-BR');
+}
+
+function makeId() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 }
 
 function makeFamilyMember() {
-  return {
-    id: globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random()),
-    name: '',
-    relation: '',
-    photo: '',
-  };
+  return { id: makeId(), name: '', relation: '', photo: '' };
+}
+
+function makeAdditionalDetail() {
+  return { id: makeId(), label: '', value: '' };
 }
 
 function readFileAsDataUrl(file) {
@@ -103,6 +96,7 @@ export default function App() {
   const [residentForm, setResidentForm] = useState(emptyResidentForm);
   const [editingResidentId, setEditingResidentId] = useState(null);
   const [editingParcel, setEditingParcel] = useState(null);
+  const [showExtraDetails, setShowExtraDetails] = useState(false);
   const [tab, setTab] = useState('desk');
   const [notice, setNotice] = useState({ text: 'Registre a encomenda manualmente ou leia a etiqueta pela câmera.', type: 'info' });
   const [busy, setBusy] = useState(false);
@@ -118,25 +112,43 @@ export default function App() {
   const filteredParcels = useMemo(() => {
     const term = normalize(query.trim());
     if (!term) return todayParcels;
-    return todayParcels.filter(parcel => normalize(Object.values(parcel.data).join(' ')).includes(term));
+    return todayParcels.filter(parcel => {
+      const details = (parcel.data.additionalDetails || []).flatMap(item => [item.label, item.value]).join(' ');
+      return normalize([...Object.values(parcel.data).filter(value => typeof value === 'string'), details].join(' ')).includes(term);
+    });
   }, [todayParcels, query]);
 
   function updateField(key, value) {
     setForm(current => ({ ...current, [key]: value }));
   }
 
-  function addFamilyMember() {
-    setResidentForm(current => ({
+  function addAdditionalDetail() {
+    setForm(current => ({ ...current, additionalDetails: [...(current.additionalDetails || []), makeAdditionalDetail()] }));
+    setShowExtraDetails(true);
+  }
+
+  function updateAdditionalDetail(index, key, value) {
+    setForm(current => ({
       ...current,
-      family: [...current.family, makeFamilyMember()],
+      additionalDetails: (current.additionalDetails || []).map((detail, detailIndex) => detailIndex === index
+        ? { ...detail, [key]: value }
+        : detail),
     }));
   }
 
-  function removeFamilyMember(index) {
-    setResidentForm(current => ({
+  function removeAdditionalDetail(index) {
+    setForm(current => ({
       ...current,
-      family: current.family.filter((_, memberIndex) => memberIndex !== index),
+      additionalDetails: (current.additionalDetails || []).filter((_, detailIndex) => detailIndex !== index),
     }));
+  }
+
+  function addFamilyMember() {
+    setResidentForm(current => ({ ...current, family: [...current.family, makeFamilyMember()] }));
+  }
+
+  function removeFamilyMember(index) {
+    setResidentForm(current => ({ ...current, family: current.family.filter((_, memberIndex) => memberIndex !== index) }));
   }
 
   function updateFamilyMember(index, field, value) {
@@ -151,8 +163,7 @@ export default function App() {
     event.target.value = '';
     if (!file) return;
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const compressed = await compressImage(dataUrl);
+      const compressed = await compressImage(await readFileAsDataUrl(file));
       setResidentForm(current => ({ ...current, photo: compressed }));
     } catch (error) {
       console.error('Erro ao carregar foto do morador:', error);
@@ -165,8 +176,7 @@ export default function App() {
     event.target.value = '';
     if (!file) return;
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const compressed = await compressImage(dataUrl);
+      const compressed = await compressImage(await readFileAsDataUrl(file));
       updateFamilyMember(index, 'photo', compressed);
     } catch (error) {
       console.error('Erro ao carregar foto do familiar:', error);
@@ -217,6 +227,7 @@ export default function App() {
     }
 
     setForm(current => ({
+      ...current,
       resident: suggested.resident || current.resident,
       apartment: suggested.apartment || current.apartment,
       carrier: suggested.carrier || current.carrier,
@@ -271,13 +282,19 @@ export default function App() {
       return;
     }
 
+    const data = {
+      ...form,
+      additionalDetails: (form.additionalDetails || [])
+        .map(detail => ({ ...detail, label: detail.label.trim(), value: detail.value.trim() }))
+        .filter(detail => detail.label || detail.value),
+    };
     const entry = {
-      id: editingParcel?.id || (globalThis.crypto?.randomUUID?.() || String(Date.now())),
+      id: editingParcel?.id || makeId(),
       receivedAt: editingParcel?.receivedAt || new Date().toISOString(),
       status: editingParcel?.status || 'Pendente',
       pickedUpBy: editingParcel?.pickedUpBy || '',
       leftAt: editingParcel?.leftAt || '',
-      data: { ...form },
+      data,
     };
 
     setParcels(current => {
@@ -299,8 +316,16 @@ export default function App() {
 
     setEditingParcel(null);
     setForm(emptyForm());
+    setShowExtraDetails(false);
     setOcrText('');
     setNotice({ text: 'Encomenda registrada neste celular.', type: 'success' });
+  }
+
+  function editParcel(parcel) {
+    setEditingParcel(parcel);
+    setForm({ ...emptyForm(), ...parcel.data, additionalDetails: parcel.data.additionalDetails || [] });
+    setShowExtraDetails(Boolean(parcel.data.additionalDetails?.length));
+    setTab('desk');
   }
 
   function markPickedUp(parcel) {
@@ -325,7 +350,7 @@ export default function App() {
 
     const cleanedFamily = residentForm.family
       .map(member => ({
-        id: member.id || (globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random())),
+        id: member.id || makeId(),
         name: member.name.trim(),
         relation: member.relation.trim(),
         photo: member.photo || '',
@@ -333,7 +358,7 @@ export default function App() {
       .filter(member => member.name || member.relation || member.photo);
 
     const resident = {
-      id: editingResidentId || (globalThis.crypto?.randomUUID?.() || String(Date.now())),
+      id: editingResidentId || makeId(),
       name: residentForm.name.trim(),
       apartment: residentForm.apartment.trim(),
       phone: residentForm.phone.trim(),
@@ -356,7 +381,7 @@ export default function App() {
       phone: resident.phone || '',
       photo: resident.photo || '',
       family: (resident.family || []).map(member => ({
-        id: member.id || (globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random())),
+        id: member.id || makeId(),
         name: member.name || '',
         relation: member.relation || '',
         photo: member.photo || '',
@@ -376,7 +401,9 @@ export default function App() {
     rows.forEach((item, index) => {
       const received = new Date(item.receivedAt).toLocaleString('pt-BR');
       const left = item.leftAt ? new Date(item.leftAt).toLocaleString('pt-BR') : 'Ainda pendente';
-      const details = FIELD_LIST.map(field => item.data[field.id] ? `${field.label}: ${item.data[field.id]}` : '').filter(Boolean).join(' | ');
+      const standardDetails = FIELD_LIST.map(field => item.data[field.id] ? `${field.label}: ${item.data[field.id]}` : '').filter(Boolean);
+      const extraDetails = (item.data.additionalDetails || []).filter(detail => detail.label || detail.value).map(detail => `${detail.label || 'Detalhe'}: ${detail.value}`);
+      const details = [...standardDetails, ...extraDetails].join(' | ');
       const lines = doc.splitTextToSize(`${index + 1}. ${item.status} | Recebido: ${received} | Retirada: ${left}${item.pickedUpBy ? ` por ${item.pickedUpBy}` : ''} | ${details}`, 180);
       if (y + lines.length * 6 > 280) { doc.addPage(); y = 20; }
       doc.text(lines, 14, y);
@@ -396,10 +423,13 @@ export default function App() {
         <h3>{parcel.data.resident || 'Morador não informado'}</h3>
         <p>{parcel.data.apartment || 'Apartamento não informado'}{parcel.data.carrier ? ` · ${parcel.data.carrier}` : ''}</p>
         {parcel.data.tracking && <p className="muted">{parcel.data.tracking}</p>}
+        {(parcel.data.additionalDetails || []).filter(detail => detail.label || detail.value).map(detail => (
+          <p className="muted" key={detail.id}>{detail.label ? `${detail.label}: ` : ''}{detail.value}</p>
+        ))}
         {parcel.status === 'Retirado' && <p className="muted">Retirado por {parcel.pickedUpBy} · {new Date(parcel.leftAt).toLocaleString('pt-BR')}</p>}
         <div className="button-row">
           {parcel.status !== 'Retirado' && <button className="button small green" onClick={() => markPickedUp(parcel)}>Registrar retirada</button>}
-          <button className="button small secondary" onClick={() => { setEditingParcel(parcel); setForm(parcel.data); setTab('desk'); }}>Editar</button>
+          <button className="button small secondary" onClick={() => editParcel(parcel)}>Editar</button>
           <button className="button small red" onClick={() => deleteParcel(parcel)}>Excluir</button>
         </div>
       </article>
@@ -427,8 +457,24 @@ export default function App() {
             <div className={`notice ${notice.type}`} role="status">{notice.text}</div>
             <form onSubmit={saveParcel}>
               {FIELD_LIST.map(field => <label className="field-label" key={field.id}>{field.label}<input value={form[field.id]} onChange={event => updateField(field.id, event.target.value)} placeholder={field.label} /></label>)}
+
+              <button className="button secondary full" type="button" aria-expanded={showExtraDetails} onClick={() => setShowExtraDetails(value => !value)}>
+                {showExtraDetails ? 'Ocultar detalhes adicionais' : '＋ Adicionar mais detalhes'}
+              </button>
+              {showExtraDetails && <div className="extra-details-panel">
+                <p className="help-text">Inclua informações opcionais, como tipo, quantidade, condição ou observações sobre a encomenda.</p>
+                {(form.additionalDetails || []).map((detail, index) => (
+                  <div className="extra-detail-row" key={detail.id || index}>
+                    <label className="field-label">Detalhe<input value={detail.label} onChange={event => updateAdditionalDetail(index, 'label', event.target.value)} placeholder="Ex.: Tipo da encomenda" /></label>
+                    <label className="field-label">Informação<input value={detail.value} onChange={event => updateAdditionalDetail(index, 'value', event.target.value)} placeholder="Ex.: Caixa grande" /></label>
+                    <button className="button small red" type="button" onClick={() => removeAdditionalDetail(index)}>Remover detalhe</button>
+                  </div>
+                ))}
+                <button className="button small secondary" type="button" onClick={addAdditionalDetail}>＋ Adicionar campo</button>
+              </div>}
+
               <button className="button green full" type="submit">{editingParcel ? 'Atualizar encomenda' : 'Registrar recebimento'}</button>
-              {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); }}>Cancelar edição</button>}
+              {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); setShowExtraDetails(false); }}>Cancelar edição</button>}
             </form>
           </div>
           <div className="panel">
@@ -444,44 +490,28 @@ export default function App() {
             <form onSubmit={saveResident}>
               <div className="resident-header-block">
                 <div className="resident-photo-box">
-                  <label className="field-label photo-field-label">Foto do morador
-                    <input type="file" accept="image/*" onChange={handleResidentPhotoChange} />
-                  </label>
+                  <label className="field-label photo-field-label">Foto do morador<input type="file" accept="image/*" onChange={handleResidentPhotoChange} /></label>
                   {residentForm.photo ? <img className="resident-photo-preview" src={residentForm.photo} alt="Foto do morador" /> : <div className="resident-photo-empty">Sem foto</div>}
                 </div>
               </div>
-
               <label className="field-label">Nome<input required value={residentForm.name} onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))} /></label>
               <label className="field-label">Apartamento / bloco<input required value={residentForm.apartment} onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))} /></label>
               <label className="field-label">Telefone (opcional)<input type="tel" value={residentForm.phone} onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))} /></label>
 
               <div className="family-section">
-                <div className="section-heading family-heading">
-                  <h3>Familiares</h3>
-                  <button type="button" className="button small secondary" onClick={addFamilyMember}>+ Familiar</button>
-                </div>
-
+                <div className="section-heading family-heading"><h3>Familiares</h3><button type="button" className="button small secondary" onClick={addFamilyMember}>+ Familiar</button></div>
                 {residentForm.family.length ? residentForm.family.map((member, index) => (
                   <div className="family-member-card" key={member.id || index}>
-                    <div className="family-member-header">
-                      <h4>Familiar {index + 1}</h4>
-                      <button type="button" className="button small red" onClick={() => removeFamilyMember(index)}>Remover</button>
-                    </div>
-
+                    <div className="family-member-header"><h4>Familiar {index + 1}</h4><button type="button" className="button small red" onClick={() => removeFamilyMember(index)}>Remover</button></div>
                     <div className="family-photo-row">
-                      <label className="upload-photo-button">
-                        <span>Foto</span>
-                        <input type="file" accept="image/*" onChange={event => handleFamilyPhotoChange(event, index)} />
-                      </label>
+                      <label className="upload-photo-button"><span>Foto</span><input type="file" accept="image/*" onChange={event => handleFamilyPhotoChange(event, index)} /></label>
                       {member.photo ? <img className="family-photo-preview" src={member.photo} alt={`Foto do familiar ${index + 1}`} /> : <div className="family-photo-placeholder">Sem foto</div>}
                     </div>
-
                     <label className="field-label">Nome<input value={member.name} onChange={event => updateFamilyMember(index, 'name', event.target.value)} /></label>
                     <label className="field-label">Parentesco<input value={member.relation} onChange={event => updateFamilyMember(index, 'relation', event.target.value)} /></label>
                   </div>
                 )) : <p className="empty">Nenhum familiar adicionado.</p>}
               </div>
-
               <button className="button green full" type="submit">{editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}</button>
             </form>
           </div>
@@ -492,16 +522,11 @@ export default function App() {
               <article className="list-card resident-card" key={resident.id}>
                 <div className="resident-card-header">
                   {resident.photo ? <img className="resident-avatar" src={resident.photo} alt={resident.name} /> : <div className="resident-avatar empty-avatar">N</div>}
-                  <div>
-                    <h3>{resident.name}</h3>
-                    <p>{resident.apartment}</p>
-                  </div>
+                  <div><h3>{resident.name}</h3><p>{resident.apartment}</p></div>
                 </div>
                 {resident.phone && <p className="muted">{resident.phone}</p>}
                 <p className="muted">{(resident.family || []).length} familiar(es)</p>
-                <div className="button-row">
-                  <button className="button small secondary" onClick={() => editResident(resident)}>Editar</button>
-                </div>
+                <div className="button-row"><button className="button small secondary" onClick={() => editResident(resident)}>Editar</button></div>
               </article>
             )) : <p className="empty">Nenhum morador cadastrado.</p>}
           </div>
