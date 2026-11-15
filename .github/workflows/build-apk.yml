@@ -1,8 +1,11 @@
+ARQUIVO 3: .github/workflows/build-apk.yml
+(Dentro das pastas: .github/workflows/build-apk.yml)
+--------------------------------------------------------------------------------
 name: Criar APK para Android
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "main", "master", "principal" ]
   workflow_dispatch:
 
 jobs:
@@ -15,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Install dependencies
         run: npm install
@@ -24,14 +27,15 @@ jobs:
         run: npm run build
 
       - name: Setup JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Add Capacitor Android
+      - name: Add Capacitor Android & Camera Permissions
         run: |
           npx cap add android
+          sed -i 's/<\/manifest>/<uses-permission android:name="android.permission.CAMERA" \/><uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" \/><uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" \/><\/manifest>/g' android/app/src/main/AndroidManifest.xml
           npx cap sync android
 
       - name: Build APK with Gradle
