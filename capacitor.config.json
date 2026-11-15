@@ -1,6 +1,11 @@
+ARQUIVO 2: capacitor.config.json
+(Na raiz do repositorio: capacitor.config.json)
+--------------------------------------------------------------------------------
 {
-  "appId": "com.portaria.encomendas",
-  "appName": "Portaria Encomendas",
-  "webDir": "dist",
-  "bundledWebRuntime": false
+  "appId": "com.portaria.inteligente",
+  "appName": "Portaria Inteligente",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
 }
