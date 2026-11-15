@@ -50,16 +50,12 @@ function normalize(value = '') {
   return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase('pt-BR');
 }
 
-function makeId() {
+function createId() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 }
 
-function makeFamilyMember() {
-  return { id: makeId(), name: '', relation: '', photo: '' };
-}
-
-function makeAdditionalDetail() {
-  return { id: makeId(), label: '', value: '' };
+function createFamilyMember() {
+  return { id: createId(), name: '', relation: '', photo: '' };
 }
 
 function readFileAsDataUrl(file) {
@@ -96,7 +92,6 @@ export default function App() {
   const [residentForm, setResidentForm] = useState(emptyResidentForm);
   const [editingResidentId, setEditingResidentId] = useState(null);
   const [editingParcel, setEditingParcel] = useState(null);
-  const [showExtraDetails, setShowExtraDetails] = useState(false);
   const [tab, setTab] = useState('desk');
   const [notice, setNotice] = useState({ text: 'Registre a encomenda manualmente ou leia a etiqueta pela câmera.', type: 'info' });
   const [busy, setBusy] = useState(false);
@@ -113,8 +108,11 @@ export default function App() {
     const term = normalize(query.trim());
     if (!term) return todayParcels;
     return todayParcels.filter(parcel => {
-      const details = (parcel.data.additionalDetails || []).flatMap(item => [item.label, item.value]).join(' ');
-      return normalize([...Object.values(parcel.data).filter(value => typeof value === 'string'), details].join(' ')).includes(term);
+      const combined = [
+        ...Object.values(parcel.data || {}).filter(value => typeof value === 'string' || Array.isArray(value)),
+        ((parcel.data?.additionalDetails || []).map(item => `${item.label || ''} ${item.value || ''}`)).join(' '),
+      ].join(' ');
+      return normalize(combined).includes(term);
     });
   }, [todayParcels, query]);
 
@@ -122,39 +120,18 @@ export default function App() {
     setForm(current => ({ ...current, [key]: value }));
   }
 
-  function addAdditionalDetail() {
-    setForm(current => ({ ...current, additionalDetails: [...(current.additionalDetails || []), makeAdditionalDetail()] }));
-    setShowExtraDetails(true);
-  }
-
-  function updateAdditionalDetail(index, key, value) {
-    setForm(current => ({
-      ...current,
-      additionalDetails: (current.additionalDetails || []).map((detail, detailIndex) => detailIndex === index
-        ? { ...detail, [key]: value }
-        : detail),
-    }));
-  }
-
-  function removeAdditionalDetail(index) {
-    setForm(current => ({
-      ...current,
-      additionalDetails: (current.additionalDetails || []).filter((_, detailIndex) => detailIndex !== index),
-    }));
-  }
-
   function addFamilyMember() {
-    setResidentForm(current => ({ ...current, family: [...current.family, makeFamilyMember()] }));
+    setResidentForm(current => ({ ...current, family: [...current.family, createFamilyMember()] }));
   }
 
   function removeFamilyMember(index) {
-    setResidentForm(current => ({ ...current, family: current.family.filter((_, memberIndex) => memberIndex !== index) }));
+    setResidentForm(current => ({ ...current, family: current.family.filter((_, i) => i !== index) }));
   }
 
   function updateFamilyMember(index, field, value) {
     setResidentForm(current => ({
       ...current,
-      family: current.family.map((member, memberIndex) => memberIndex === index ? { ...member, [field]: value } : member),
+      family: current.family.map((member, i) => i === index ? { ...member, [field]: value } : member),
     }));
   }
 
@@ -182,6 +159,15 @@ export default function App() {
       console.error('Erro ao carregar foto do familiar:', error);
       setNotice({ text: 'Não foi possível carregar a foto do familiar.', type: 'error' });
     }
+  }
+
+  function findResidentMatch(text) {
+    const normalizedText = normalize(text || '');
+    return residents.find(resident => {
+      const residentName = resident.name ? normalize(resident.name) : '';
+      const relativeNames = (resident.family || []).map(member => normalize(member.name || ''));
+      return residentName && normalizedText.includes(residentName) || relativeNames.some(name => name && normalizedText.includes(name));
+    }) || null;
   }
 
   function applyLabelText(text) {
@@ -214,12 +200,7 @@ export default function App() {
     const carrierHint = CARRIER_HINTS.find(([needle]) => normalizedText.includes(needle));
     suggested.carrier = carrierHint?.[1] || findAfter(['TRANSPORTADORA', 'REMETENTE']) || '';
 
-    const residentMatch = residents.find(resident => {
-      const residentFound = resident.name && normalizedText.includes(normalize(resident.name));
-      const relativeFound = (resident.family || []).some(relative => relative.name && normalizedText.includes(normalize(relative.name)));
-      return residentFound || relativeFound;
-    });
-
+    const residentMatch = findResidentMatch(text);
     if (residentMatch) {
       const relative = (residentMatch.family || []).find(person => person.name && normalizedText.includes(normalize(person.name)));
       suggested.resident = relative ? `${relative.name} (${relative.relation || 'familiar'})` : residentMatch.name;
@@ -282,19 +263,13 @@ export default function App() {
       return;
     }
 
-    const data = {
-      ...form,
-      additionalDetails: (form.additionalDetails || [])
-        .map(detail => ({ ...detail, label: detail.label.trim(), value: detail.value.trim() }))
-        .filter(detail => detail.label || detail.value),
-    };
     const entry = {
-      id: editingParcel?.id || makeId(),
+      id: editingParcel?.id || createId(),
       receivedAt: editingParcel?.receivedAt || new Date().toISOString(),
       status: editingParcel?.status || 'Pendente',
       pickedUpBy: editingParcel?.pickedUpBy || '',
       leftAt: editingParcel?.leftAt || '',
-      data,
+      data: { ...form },
     };
 
     setParcels(current => {
@@ -316,16 +291,8 @@ export default function App() {
 
     setEditingParcel(null);
     setForm(emptyForm());
-    setShowExtraDetails(false);
     setOcrText('');
     setNotice({ text: 'Encomenda registrada neste celular.', type: 'success' });
-  }
-
-  function editParcel(parcel) {
-    setEditingParcel(parcel);
-    setForm({ ...emptyForm(), ...parcel.data, additionalDetails: parcel.data.additionalDetails || [] });
-    setShowExtraDetails(Boolean(parcel.data.additionalDetails?.length));
-    setTab('desk');
   }
 
   function markPickedUp(parcel) {
@@ -348,22 +315,22 @@ export default function App() {
     event.preventDefault();
     if (!residentForm.name.trim() || !residentForm.apartment.trim()) return;
 
-    const cleanedFamily = residentForm.family
+    const cleanFamily = (residentForm.family || [])
       .map(member => ({
-        id: member.id || makeId(),
-        name: member.name.trim(),
-        relation: member.relation.trim(),
+        id: member.id || createId(),
+        name: (member.name || '').trim(),
+        relation: (member.relation || '').trim(),
         photo: member.photo || '',
       }))
       .filter(member => member.name || member.relation || member.photo);
 
     const resident = {
-      id: editingResidentId || makeId(),
+      id: editingResidentId || createId(),
       name: residentForm.name.trim(),
       apartment: residentForm.apartment.trim(),
       phone: residentForm.phone.trim(),
       photo: residentForm.photo || '',
-      family: cleanedFamily,
+      family: cleanFamily,
     };
 
     setResidents(current => editingResidentId
@@ -381,7 +348,7 @@ export default function App() {
       phone: resident.phone || '',
       photo: resident.photo || '',
       family: (resident.family || []).map(member => ({
-        id: member.id || makeId(),
+        id: member.id || createId(),
         name: member.name || '',
         relation: member.relation || '',
         photo: member.photo || '',
@@ -401,9 +368,10 @@ export default function App() {
     rows.forEach((item, index) => {
       const received = new Date(item.receivedAt).toLocaleString('pt-BR');
       const left = item.leftAt ? new Date(item.leftAt).toLocaleString('pt-BR') : 'Ainda pendente';
-      const standardDetails = FIELD_LIST.map(field => item.data[field.id] ? `${field.label}: ${item.data[field.id]}` : '').filter(Boolean);
-      const extraDetails = (item.data.additionalDetails || []).filter(detail => detail.label || detail.value).map(detail => `${detail.label || 'Detalhe'}: ${detail.value}`);
-      const details = [...standardDetails, ...extraDetails].join(' | ');
+      const details = [
+        ...FIELD_LIST.map(field => item.data[field.id] ? `${field.label}: ${item.data[field.id]}` : '').filter(Boolean),
+        ...(item.data.additionalDetails || []).map(detail => `${detail.label || 'Detalhe'}: ${detail.value || ''}`).filter(Boolean),
+      ].join(' | ');
       const lines = doc.splitTextToSize(`${index + 1}. ${item.status} | Recebido: ${received} | Retirada: ${left}${item.pickedUpBy ? ` por ${item.pickedUpBy}` : ''} | ${details}`, 180);
       if (y + lines.length * 6 > 280) { doc.addPage(); y = 20; }
       doc.text(lines, 14, y);
@@ -423,13 +391,13 @@ export default function App() {
         <h3>{parcel.data.resident || 'Morador não informado'}</h3>
         <p>{parcel.data.apartment || 'Apartamento não informado'}{parcel.data.carrier ? ` · ${parcel.data.carrier}` : ''}</p>
         {parcel.data.tracking && <p className="muted">{parcel.data.tracking}</p>}
-        {(parcel.data.additionalDetails || []).filter(detail => detail.label || detail.value).map(detail => (
-          <p className="muted" key={detail.id}>{detail.label ? `${detail.label}: ` : ''}{detail.value}</p>
+        {(parcel.data.additionalDetails || []).map(detail => (
+          <p className="muted" key={detail.id || detail.label}>{detail.label ? `${detail.label}: ` : ''}{detail.value}</p>
         ))}
         {parcel.status === 'Retirado' && <p className="muted">Retirado por {parcel.pickedUpBy} · {new Date(parcel.leftAt).toLocaleString('pt-BR')}</p>}
         <div className="button-row">
           {parcel.status !== 'Retirado' && <button className="button small green" onClick={() => markPickedUp(parcel)}>Registrar retirada</button>}
-          <button className="button small secondary" onClick={() => editParcel(parcel)}>Editar</button>
+          <button className="button small secondary" onClick={() => { setEditingParcel(parcel); setForm({ ...emptyForm(), ...parcel.data, additionalDetails: parcel.data.additionalDetails || [] }); setTab('desk'); }}>Editar</button>
           <button className="button small red" onClick={() => deleteParcel(parcel)}>Excluir</button>
         </div>
       </article>
@@ -456,25 +424,48 @@ export default function App() {
             </div>
             <div className={`notice ${notice.type}`} role="status">{notice.text}</div>
             <form onSubmit={saveParcel}>
-              {FIELD_LIST.map(field => <label className="field-label" key={field.id}>{field.label}<input value={form[field.id]} onChange={event => updateField(field.id, event.target.value)} placeholder={field.label} /></label>)}
+              {FIELD_LIST.map(field => (
+                <label className="field-label" key={field.id}>
+                  {field.label}
+                  <input value={form[field.id] || ''} onChange={event => updateField(field.id, event.target.value)} placeholder={field.label} />
+                </label>
+              ))}
 
-              <button className="button secondary full" type="button" aria-expanded={showExtraDetails} onClick={() => setShowExtraDetails(value => !value)}>
-                {showExtraDetails ? 'Ocultar detalhes adicionais' : '＋ Adicionar mais detalhes'}
+              <button type="button" className="button secondary full" onClick={() => setForm(current => ({
+                ...current,
+                additionalDetails: current.additionalDetails?.length ? current.additionalDetails : [ { id: createId(), label: '', value: '' } ],
+              }))}>
+                + Adicionar mais detalhes
               </button>
-              {showExtraDetails && <div className="extra-details-panel">
-                <p className="help-text">Inclua informações opcionais, como tipo, quantidade, condição ou observações sobre a encomenda.</p>
-                {(form.additionalDetails || []).map((detail, index) => (
-                  <div className="extra-detail-row" key={detail.id || index}>
-                    <label className="field-label">Detalhe<input value={detail.label} onChange={event => updateAdditionalDetail(index, 'label', event.target.value)} placeholder="Ex.: Tipo da encomenda" /></label>
-                    <label className="field-label">Informação<input value={detail.value} onChange={event => updateAdditionalDetail(index, 'value', event.target.value)} placeholder="Ex.: Caixa grande" /></label>
-                    <button className="button small red" type="button" onClick={() => removeAdditionalDetail(index)}>Remover detalhe</button>
-                  </div>
-                ))}
-                <button className="button small secondary" type="button" onClick={addAdditionalDetail}>＋ Adicionar campo</button>
-              </div>}
+
+              {(form.additionalDetails || []).length > 0 && (
+                <div className="extra-details-panel">
+                  {(form.additionalDetails || []).map((detail, index) => (
+                    <div className="extra-detail-row" key={detail.id || index}>
+                      <label className="field-label">Detalhe<input value={detail.label || ''} onChange={event => setForm(current => ({
+                        ...current,
+                        additionalDetails: (current.additionalDetails || []).map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item),
+                      }))} placeholder="Ex.: Tipo da encomenda" /></label>
+                      <label className="field-label">Informação<input value={detail.value || ''} onChange={event => setForm(current => ({
+                        ...current,
+                        additionalDetails: (current.additionalDetails || []).map((item, itemIndex) => itemIndex === index ? { ...item, value: event.target.value } : item),
+                      }))} placeholder="Ex.: Caixa grande" /></label>
+                      <button type="button" className="button small red" onClick={() => setForm(current => ({
+                        ...current,
+                        additionalDetails: (current.additionalDetails || []).filter((_, itemIndex) => itemIndex !== index),
+                      }))}>Remover</button>
+                    </div>
+                  ))}
+
+                  <button type="button" className="button small secondary" onClick={() => setForm(current => ({
+                    ...current,
+                    additionalDetails: [...(current.additionalDetails || []), { id: createId(), label: '', value: '' }],
+                  }))}>+ Adicionar campo</button>
+                </div>
+              )}
 
               <button className="button green full" type="submit">{editingParcel ? 'Atualizar encomenda' : 'Registrar recebimento'}</button>
-              {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); setShowExtraDetails(false); }}>Cancelar edição</button>}
+              {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); }}>Cancelar edição</button>}
             </form>
           </div>
           <div className="panel">
@@ -488,30 +479,39 @@ export default function App() {
           <div className="panel">
             <h2>{editingResidentId ? 'Editar morador' : 'Cadastrar morador'}</h2>
             <form onSubmit={saveResident}>
-              <div className="resident-header-block">
-                <div className="resident-photo-box">
-                  <label className="field-label photo-field-label">Foto do morador<input type="file" accept="image/*" onChange={handleResidentPhotoChange} /></label>
-                  {residentForm.photo ? <img className="resident-photo-preview" src={residentForm.photo} alt="Foto do morador" /> : <div className="resident-photo-empty">Sem foto</div>}
-                </div>
+              <div className="resident-photo-box">
+                <label className="field-label photo-field-label">Foto do morador<input type="file" accept="image/*" onChange={handleResidentPhotoChange} /></label>
+                {residentForm.photo ? <img className="resident-photo-preview" src={residentForm.photo} alt="Foto do morador" /> : <div className="resident-photo-empty">Sem foto</div>}
               </div>
+
               <label className="field-label">Nome<input required value={residentForm.name} onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))} /></label>
               <label className="field-label">Apartamento / bloco<input required value={residentForm.apartment} onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))} /></label>
               <label className="field-label">Telefone (opcional)<input type="tel" value={residentForm.phone} onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))} /></label>
 
               <div className="family-section">
-                <div className="section-heading family-heading"><h3>Familiares</h3><button type="button" className="button small secondary" onClick={addFamilyMember}>+ Familiar</button></div>
-                {residentForm.family.length ? residentForm.family.map((member, index) => (
+                <div className="section-heading family-heading">
+                  <h3>Familiares</h3>
+                  <button type="button" className="button small secondary" onClick={addFamilyMember}>+ Familiar</button>
+                </div>
+
+                {(residentForm.family || []).length ? (residentForm.family || []).map((member, index) => (
                   <div className="family-member-card" key={member.id || index}>
-                    <div className="family-member-header"><h4>Familiar {index + 1}</h4><button type="button" className="button small red" onClick={() => removeFamilyMember(index)}>Remover</button></div>
+                    <div className="family-member-header">
+                      <h4>Familiar {index + 1}</h4>
+                      <button type="button" className="button small red" onClick={() => removeFamilyMember(index)}>Remover</button>
+                    </div>
+
                     <div className="family-photo-row">
                       <label className="upload-photo-button"><span>Foto</span><input type="file" accept="image/*" onChange={event => handleFamilyPhotoChange(event, index)} /></label>
                       {member.photo ? <img className="family-photo-preview" src={member.photo} alt={`Foto do familiar ${index + 1}`} /> : <div className="family-photo-placeholder">Sem foto</div>}
                     </div>
-                    <label className="field-label">Nome<input value={member.name} onChange={event => updateFamilyMember(index, 'name', event.target.value)} /></label>
-                    <label className="field-label">Parentesco<input value={member.relation} onChange={event => updateFamilyMember(index, 'relation', event.target.value)} /></label>
+
+                    <label className="field-label">Nome<input value={member.name || ''} onChange={event => updateFamilyMember(index, 'name', event.target.value)} /></label>
+                    <label className="field-label">Parentesco<input value={member.relation || ''} onChange={event => updateFamilyMember(index, 'relation', event.target.value)} /></label>
                   </div>
                 )) : <p className="empty">Nenhum familiar adicionado.</p>}
               </div>
+
               <button className="button green full" type="submit">{editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}</button>
             </form>
           </div>
@@ -522,7 +522,10 @@ export default function App() {
               <article className="list-card resident-card" key={resident.id}>
                 <div className="resident-card-header">
                   {resident.photo ? <img className="resident-avatar" src={resident.photo} alt={resident.name} /> : <div className="resident-avatar empty-avatar">N</div>}
-                  <div><h3>{resident.name}</h3><p>{resident.apartment}</p></div>
+                  <div>
+                    <h3>{resident.name}</h3>
+                    <p>{resident.apartment}</p>
+                  </div>
                 </div>
                 {resident.phone && <p className="muted">{resident.phone}</p>}
                 <p className="muted">{(resident.family || []).length} familiar(es)</p>
@@ -534,7 +537,7 @@ export default function App() {
 
         {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">Os registros ficam salvos neste celular. Exporte cópias periódicas para não perder os dados.</p>{reportDays.length ? reportDays.map(day => <div className="report-row" key={day}><strong>{day}</strong><button className="button small green" onClick={() => exportPdf(day)}>Baixar PDF</button></div>) : <p className="empty">Ainda não há relatórios.</p>}</section>}
 
-        {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR em português e regras locais para sugerir nome, apartamento e transportadora. Continue revisando os campos antes de salvar.</p><div className="subheading">Memória local</div>{memory.length ? memory.slice(0, 10).map((item, index) => <div className="memory-row" key={`${item.keyword}-${index}`}><span>{item.keyword}</span><strong>{item.carrier}</strong></div>) : <p className="empty">Ainda não há memórias salvas.</p>}</section>}
+        {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR e pode relacionar nomes de moradores e familiares com a etiqueta da encomenda.</p><div className="subheading">Memória local</div>{memory.length ? memory.slice(0, 10).map((item, index) => <div className="memory-row" key={`${item.keyword}-${index}`}><span>{item.keyword}</span><strong>{item.carrier}</strong></div>) : <p className="empty">Ainda não há memórias salvas.</p>}</section>}
       </main>
 
       <nav className="bottom-nav" aria-label="Navegação principal">
