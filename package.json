@@ -1,6 +1,4 @@
-ARQUIVO 1: package.json
-(Na raiz do repositorio: package.json)
---------------------------------------------------------------------------------
+
 {
   "name": "portaria-encomendas",
   "version": "1.0.0",
