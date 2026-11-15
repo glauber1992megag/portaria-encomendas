@@ -46,8 +46,53 @@ function emptyForm() {
   return { resident: '', apartment: '', carrier: '', tracking: '' };
 }
 
+function emptyResidentForm() {
+  return {
+    name: '',
+    apartment: '',
+    phone: '',
+    photo: '',
+    family: [],
+  };
+}
+
 function normalize(value = '') {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase('pt-BR');
+}
+
+function makeFamilyMember() {
+  return {
+    id: globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random()),
+    name: '',
+    relation: '',
+    photo: '',
+  };
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Não foi possível ler a imagem.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressImage(dataUrl, maxWidth = 640) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, maxWidth / Math.max(image.width, image.height));
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.72));
+    };
+    image.onerror = () => reject(new Error('Não foi possível processar a imagem.'));
+    image.src = dataUrl;
+  });
 }
 
 export default function App() {
@@ -55,7 +100,7 @@ export default function App() {
   const [parcels, setParcels] = useState(() => load(STORAGE.parcels, {}));
   const [memory, setMemory] = useState(() => load(STORAGE.memory, []));
   const [form, setForm] = useState(emptyForm);
-  const [residentForm, setResidentForm] = useState({ name: '', apartment: '', phone: '' });
+  const [residentForm, setResidentForm] = useState(emptyResidentForm);
   const [editingResidentId, setEditingResidentId] = useState(null);
   const [editingParcel, setEditingParcel] = useState(null);
   const [tab, setTab] = useState('desk');
@@ -78,6 +123,55 @@ export default function App() {
 
   function updateField(key, value) {
     setForm(current => ({ ...current, [key]: value }));
+  }
+
+  function addFamilyMember() {
+    setResidentForm(current => ({
+      ...current,
+      family: [...current.family, makeFamilyMember()],
+    }));
+  }
+
+  function removeFamilyMember(index) {
+    setResidentForm(current => ({
+      ...current,
+      family: current.family.filter((_, memberIndex) => memberIndex !== index),
+    }));
+  }
+
+  function updateFamilyMember(index, field, value) {
+    setResidentForm(current => ({
+      ...current,
+      family: current.family.map((member, memberIndex) => memberIndex === index ? { ...member, [field]: value } : member),
+    }));
+  }
+
+  async function handleResidentPhotoChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const compressed = await compressImage(dataUrl);
+      setResidentForm(current => ({ ...current, photo: compressed }));
+    } catch (error) {
+      console.error('Erro ao carregar foto do morador:', error);
+      setNotice({ text: 'Não foi possível carregar a foto do morador.', type: 'error' });
+    }
+  }
+
+  async function handleFamilyPhotoChange(event, index) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const compressed = await compressImage(dataUrl);
+      updateFamilyMember(index, 'photo', compressed);
+    } catch (error) {
+      console.error('Erro ao carregar foto do familiar:', error);
+      setNotice({ text: 'Não foi possível carregar a foto do familiar.', type: 'error' });
+    }
   }
 
   function applyLabelText(text) {
@@ -228,16 +322,46 @@ export default function App() {
   function saveResident(event) {
     event.preventDefault();
     if (!residentForm.name.trim() || !residentForm.apartment.trim()) return;
-    const resident = { id: editingResidentId || (globalThis.crypto?.randomUUID?.() || String(Date.now())), ...residentForm, family: [] };
+
+    const cleanedFamily = residentForm.family
+      .map(member => ({
+        id: member.id || (globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random())),
+        name: member.name.trim(),
+        relation: member.relation.trim(),
+        photo: member.photo || '',
+      }))
+      .filter(member => member.name || member.relation || member.photo);
+
+    const resident = {
+      id: editingResidentId || (globalThis.crypto?.randomUUID?.() || String(Date.now())),
+      name: residentForm.name.trim(),
+      apartment: residentForm.apartment.trim(),
+      phone: residentForm.phone.trim(),
+      photo: residentForm.photo || '',
+      family: cleanedFamily,
+    };
+
     setResidents(current => editingResidentId
       ? current.map(item => item.id === editingResidentId ? { ...item, ...resident } : item)
       : [resident, ...current]);
-    setResidentForm({ name: '', apartment: '', phone: '' });
+
+    setResidentForm(emptyResidentForm());
     setEditingResidentId(null);
   }
 
   function editResident(resident) {
-    setResidentForm({ name: resident.name, apartment: resident.apartment, phone: resident.phone || '' });
+    setResidentForm({
+      name: resident.name,
+      apartment: resident.apartment,
+      phone: resident.phone || '',
+      photo: resident.photo || '',
+      family: (resident.family || []).map(member => ({
+        id: member.id || (globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random())),
+        name: member.name || '',
+        relation: member.relation || '',
+        photo: member.photo || '',
+      })),
+    });
     setEditingResidentId(resident.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -302,7 +426,7 @@ export default function App() {
             </div>
             <div className={`notice ${notice.type}`} role="status">{notice.text}</div>
             <form onSubmit={saveParcel}>
-              {FIELD_LIST.map(field => <label className="field-label" key={field.id}>{field.label}<input value={form[field.id]} onChange={event => updateField(field.id, event.target.value)} placeholder={field.id === 'apartment' ? 'Ex.: Bloco A, apartamento 204' : ''} /></label>)}
+              {FIELD_LIST.map(field => <label className="field-label" key={field.id}>{field.label}<input value={form[field.id]} onChange={event => updateField(field.id, event.target.value)} placeholder={field.label} /></label>)}
               <button className="button green full" type="submit">{editingParcel ? 'Atualizar encomenda' : 'Registrar recebimento'}</button>
               {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); }}>Cancelar edição</button>}
             </form>
@@ -318,18 +442,74 @@ export default function App() {
           <div className="panel">
             <h2>{editingResidentId ? 'Editar morador' : 'Cadastrar morador'}</h2>
             <form onSubmit={saveResident}>
+              <div className="resident-header-block">
+                <div className="resident-photo-box">
+                  <label className="field-label photo-field-label">Foto do morador
+                    <input type="file" accept="image/*" onChange={handleResidentPhotoChange} />
+                  </label>
+                  {residentForm.photo ? <img className="resident-photo-preview" src={residentForm.photo} alt="Foto do morador" /> : <div className="resident-photo-empty">Sem foto</div>}
+                </div>
+              </div>
+
               <label className="field-label">Nome<input required value={residentForm.name} onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))} /></label>
-              <label className="field-label">Apartamento / bloco<input required value={residentForm.apartment} onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))} placeholder="Ex.: Bloco A, apto 204" /></label>
+              <label className="field-label">Apartamento / bloco<input required value={residentForm.apartment} onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))} /></label>
               <label className="field-label">Telefone (opcional)<input type="tel" value={residentForm.phone} onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))} /></label>
+
+              <div className="family-section">
+                <div className="section-heading family-heading">
+                  <h3>Familiares</h3>
+                  <button type="button" className="button small secondary" onClick={addFamilyMember}>+ Familiar</button>
+                </div>
+
+                {residentForm.family.length ? residentForm.family.map((member, index) => (
+                  <div className="family-member-card" key={member.id || index}>
+                    <div className="family-member-header">
+                      <h4>Familiar {index + 1}</h4>
+                      <button type="button" className="button small red" onClick={() => removeFamilyMember(index)}>Remover</button>
+                    </div>
+
+                    <div className="family-photo-row">
+                      <label className="upload-photo-button">
+                        <span>Foto</span>
+                        <input type="file" accept="image/*" onChange={event => handleFamilyPhotoChange(event, index)} />
+                      </label>
+                      {member.photo ? <img className="family-photo-preview" src={member.photo} alt={`Foto do familiar ${index + 1}`} /> : <div className="family-photo-placeholder">Sem foto</div>}
+                    </div>
+
+                    <label className="field-label">Nome<input value={member.name} onChange={event => updateFamilyMember(index, 'name', event.target.value)} /></label>
+                    <label className="field-label">Parentesco<input value={member.relation} onChange={event => updateFamilyMember(index, 'relation', event.target.value)} /></label>
+                  </div>
+                )) : <p className="empty">Nenhum familiar adicionado.</p>}
+              </div>
+
               <button className="button green full" type="submit">{editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}</button>
             </form>
           </div>
-          <div className="panel"><h2>Moradores cadastrados</h2>{residents.length ? residents.map(resident => <article className="list-card" key={resident.id}><h3>{resident.name}</h3><p>{resident.apartment}{resident.phone ? ` · ${resident.phone}` : ''}</p><div className="button-row"><button className="button small secondary" onClick={() => editResident(resident)}>Editar</button><button className="button small red" onClick={() => { if (window.confirm(`Excluir ${resident.name}?`)) setResidents(current => current.filter(item => item.id !== resident.id)); }}>Excluir</button></div></article>) : <p className="empty">Cadastre moradores para facilitar a conferência.</p>}</div>
+
+          <div className="panel">
+            <h2>Moradores cadastrados</h2>
+            {residents.length ? residents.map(resident => (
+              <article className="list-card resident-card" key={resident.id}>
+                <div className="resident-card-header">
+                  {resident.photo ? <img className="resident-avatar" src={resident.photo} alt={resident.name} /> : <div className="resident-avatar empty-avatar">N</div>}
+                  <div>
+                    <h3>{resident.name}</h3>
+                    <p>{resident.apartment}</p>
+                  </div>
+                </div>
+                {resident.phone && <p className="muted">{resident.phone}</p>}
+                <p className="muted">{(resident.family || []).length} familiar(es)</p>
+                <div className="button-row">
+                  <button className="button small secondary" onClick={() => editResident(resident)}>Editar</button>
+                </div>
+              </article>
+            )) : <p className="empty">Nenhum morador cadastrado.</p>}
+          </div>
         </section>}
 
-        {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">Os registros ficam salvos neste celular. Exporte cópias periódicas para não perder os dados.</p>{reportDays.length ? reportDays.map(day => <article className="report-row" key={day}><div><strong>{new Date(`${day}T12:00:00`).toLocaleDateString('pt-BR')}</strong><p className="muted">{parcels[day].length} encomenda(s)</p></div><button className="button small green" onClick={() => exportPdf(day)}>Exportar PDF</button></article>) : <p className="empty">Ainda não há registros para exportar.</p>}</section>}
+        {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">Os registros ficam salvos neste celular. Exporte cópias periódicas para não perder os dados.</p>{reportDays.length ? reportDays.map(day => <div className="report-row" key={day}><strong>{day}</strong><button className="button small green" onClick={() => exportPdf(day)}>Baixar PDF</button></div>) : <p className="empty">Ainda não há relatórios.</p>}</section>}
 
-        {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR em português e regras locais para sugerir nome, apartamento e transportadora. Isso é uma assistência automatizada, não uma identificação garantida: confira sempre os dados.</p><h3 className="subheading">Sugestões de transportadoras</h3>{CARRIER_HINTS.map(([word, carrier]) => <div className="memory-row" key={word}><span>{word}</span><strong>{carrier}</strong></div>)}{memory.length > 0 && <><h3 className="subheading">Aprendizados locais</h3>{memory.slice(0, 30).map((item, index) => <div className="memory-row" key={`${item.keyword}-${index}`}><span>{item.keyword}</span><strong>{item.carrier}</strong></div>)}</>}</section>}
+        {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR em português e regras locais para sugerir nome, apartamento e transportadora. Continue revisando os campos antes de salvar.</p><div className="subheading">Memória local</div>{memory.length ? memory.slice(0, 10).map((item, index) => <div className="memory-row" key={`${item.keyword}-${index}`}><span>{item.keyword}</span><strong>{item.carrier}</strong></div>) : <p className="empty">Ainda não há memórias salvas.</p>}</section>}
       </main>
 
       <nav className="bottom-nav" aria-label="Navegação principal">
