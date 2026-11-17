@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 import { createWorker } from 'tesseract.js';
 import { jsPDF } from 'jspdf';
 
@@ -8,46 +10,53 @@ const STORAGE = {
   parcels: 'portaria_mobile_parcels_v1',
   memory: 'portaria_mobile_ocr_memory_v1',
 };
-
 const FIELD_LIST = [
   { id: 'resident', label: 'Nome do morador' },
   { id: 'apartment', label: 'Apartamento / bloco' },
   { id: 'carrier', label: 'Transportadora' },
   { id: 'tracking', label: 'Código / observações' },
 ];
-
 const CARRIER_HINTS = [
-  ['MERCADO LIVRE', 'Mercado Livre'],
-  ['MERCADOLIVRE', 'Mercado Livre'],
-  ['AMAZON', 'Amazon'],
-  ['SHOPEE', 'Shopee'],
-  ['CORREIOS', 'Correios'],
-  ['MAGALU', 'Magalu Entregas'],
+  ['MERCADO LIVRE', 'Mercado Livre'], ['MERCADOLIVRE', 'Mercado Livre'], ['AMAZON', 'Amazon'],
+  ['SHOPEE', 'Shopee'], ['CORREIOS', 'Correios'], ['MAGALU', 'Magalu Entregas'],
 ];
 
 function load(key, fallback) {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : fallback;
-  } catch {
-    return fallback;
-  }
+  try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; }
+  catch { return fallback; }
 }
-
 function localDateKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
-
-function localTime(date = new Date()) {
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function emptyForm() {
-  return { resident: '', apartment: '', carrier: '', tracking: '' };
-}
-
+function emptyForm() { return { resident: '', apartment: '', carrier: '', tracking: '', extraDetails: [] }; }
+function emptyResidentForm() { return { name: '', apartment: '', phone: '', photo: '', family: [] }; }
 function normalize(value = '') {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase('pt-BR');
+  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase('pt-BR');
+}
+function newId() { return globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random()); }
+
+async function prepareImageForOcr(source) {
+  let objectUrl;
+  const imageUrl = source instanceof Blob ? (objectUrl = URL.createObjectURL(source)) : source;
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('Não foi possível abrir a imagem.'));
+      element.src = imageUrl;
+    });
+    const scale = Math.min(2, 1800 / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas indisponível neste dispositivo.');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.filter = 'grayscale(1) contrast(1.45)';
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } finally { if (objectUrl) URL.revokeObjectURL(objectUrl); }
 }
 
 export default function App() {
@@ -55,12 +64,13 @@ export default function App() {
   const [parcels, setParcels] = useState(() => load(STORAGE.parcels, {}));
   const [memory, setMemory] = useState(() => load(STORAGE.memory, []));
   const [form, setForm] = useState(emptyForm);
-  const [residentForm, setResidentForm] = useState({ name: '', apartment: '', phone: '' });
+  const [residentForm, setResidentForm] = useState(emptyResidentForm);
   const [editingResidentId, setEditingResidentId] = useState(null);
   const [editingParcel, setEditingParcel] = useState(null);
   const [tab, setTab] = useState('desk');
   const [notice, setNotice] = useState({ text: 'Registre a encomenda manualmente ou leia a etiqueta pela câmera.', type: 'info' });
   const [busy, setBusy] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState('');
   const [query, setQuery] = useState('');
   const [ocrText, setOcrText] = useState('');
 
@@ -70,22 +80,29 @@ export default function App() {
 
   const today = localDateKey();
   const todayParcels = parcels[today] || [];
+  const pendingParcels = useMemo(() => Object.entries(parcels)
+    .flatMap(([day, items]) => (items || []).filter(item => item.status !== 'Retirado').map(item => ({ ...item, day })))
+    .sort((a, b) => String(b.receivedAt || '').localeCompare(String(a.receivedAt || ''))), [parcels]);
   const filteredParcels = useMemo(() => {
     const term = normalize(query.trim());
-    if (!term) return todayParcels;
-    return todayParcels.filter(parcel => normalize(Object.values(parcel.data).join(' ')).includes(term));
+    return term ? todayParcels.filter(item => normalize(Object.values(item.data || {}).flat().join(' ')).includes(term)) : todayParcels;
   }, [todayParcels, query]);
+  const filteredPending = useMemo(() => {
+    const term = normalize(query.trim());
+    return term ? pendingParcels.filter(item => normalize(`${Object.values(item.data || {}).flat().join(' ')} ${item.day}`).includes(term)) : pendingParcels;
+  }, [pendingParcels, query]);
 
-  function updateField(key, value) {
-    setForm(current => ({ ...current, [key]: value }));
-  }
+  function updateField(key, value) { setForm(current => ({ ...current, [key]: value })); }
 
   function applyLabelText(text) {
+    setOcrText(text);
+    if (!text.trim()) {
+      setNotice({ text: 'A imagem foi processada, mas nenhum texto foi reconhecido. Tente aproximar e iluminar melhor a etiqueta ou preencha manualmente.', type: 'error' });
+      return;
+    }
     const normalizedText = normalize(text);
     const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    const suggested = emptyForm();
-
-    const findAfter = (labels) => {
+    const findAfter = labels => {
       for (let index = 0; index < lines.length; index += 1) {
         const normalizedLine = normalize(lines[index]);
         const label = labels.find(candidate => normalizedLine.includes(normalize(candidate)));
@@ -97,73 +114,70 @@ export default function App() {
       }
       return '';
     };
-
-    suggested.resident = findAfter(['DESTINATARIO', 'DESTINATÁRÍO', 'RECEBEDOR', 'CLIENTE']);
+    const suggested = emptyForm();
+    suggested.resident = findAfter(['DESTINATARIO', 'RECEBEDOR', 'CLIENTE', 'DESTINO']);
     suggested.apartment = findAfter(['APARTAMENTO', 'APTO', 'BLOCO']);
-    suggested.tracking = findAfter(['PEDIDO', 'PEDIDO Nº', 'PEDIDO NO', 'OBJETO', 'RASTREAMENTO', 'RASTREIO']);
-
+    suggested.tracking = findAfter(['PEDIDO', 'PEDIDO Nº', 'PEDIDO NO', 'OBJETO', 'RASTREAMENTO', 'RASTREIO', 'TRACKING']);
     if (!suggested.apartment) {
       const match = normalizedText.match(/(?:APTO|APT|APARTAMENTO|BLOCO)\s*[:#-]?\s*([0-9A-Z]+)/);
       if (match) suggested.apartment = `Apto ${match[1]}`;
     }
-
     const carrierHint = CARRIER_HINTS.find(([needle]) => normalizedText.includes(needle));
     suggested.carrier = carrierHint?.[1] || findAfter(['TRANSPORTADORA', 'REMETENTE']) || '';
-
-    const residentMatch = residents.find(resident => {
-      const residentFound = resident.name && normalizedText.includes(normalize(resident.name));
-      const relativeFound = (resident.family || []).some(relative => relative.name && normalizedText.includes(normalize(relative.name)));
-      return residentFound || relativeFound;
-    });
-
+    const residentMatch = residents.find(resident => (resident.name && normalizedText.includes(normalize(resident.name)))
+      || (resident.family || []).some(relative => relative.name && normalizedText.includes(normalize(relative.name))));
     if (residentMatch) {
       const relative = (residentMatch.family || []).find(person => person.name && normalizedText.includes(normalize(person.name)));
       suggested.resident = relative ? `${relative.name} (${relative.relation || 'familiar'})` : residentMatch.name;
       suggested.apartment = residentMatch.apartment;
     }
-
-    setForm(current => ({
-      resident: suggested.resident || current.resident,
-      apartment: suggested.apartment || current.apartment,
-      carrier: suggested.carrier || current.carrier,
-      tracking: suggested.tracking || current.tracking,
-    }));
-    setOcrText(text);
-    setNotice({ text: 'Leitura concluída. Confira e corrija os campos antes de salvar.', type: 'success' });
+    setForm(current => ({ ...current, ...Object.fromEntries(['resident', 'apartment', 'carrier', 'tracking'].map(key => [key, suggested[key] || current[key]])) }));
+    const matchedFields = ['resident', 'apartment', 'carrier', 'tracking'].filter(key => suggested[key]).length;
+    setNotice({
+      text: matchedFields ? `Texto reconhecido. ${matchedFields} campo(s) sugerido(s); confira e revise os dados.` : 'O texto foi reconhecido, mas nenhum campo foi identificado automaticamente. Confira o texto e copie os dados para os campos.',
+      type: matchedFields ? 'success' : 'info',
+    });
   }
 
   async function recognizeImage(image) {
     setBusy(true);
-    setNotice({ text: 'Lendo a etiqueta em português. Aguarde…', type: 'info' });
+    setOcrProgress('Preparando imagem…');
+    setOcrText('');
+    setNotice({ text: 'Preparando a etiqueta. Na primeira leitura, conecte o celular à internet para baixar o idioma português.', type: 'info' });
     let worker;
     try {
-      worker = await createWorker('por');
-      const result = await worker.recognize(image);
-      applyLabelText(result.data.text || '');
+      const preparedImage = await prepareImageForOcr(image);
+      worker = await createWorker('por', 1, { logger: message => {
+        if (message.status === 'recognizing text') setOcrProgress(`Lendo texto: ${Math.round((message.progress || 0) * 100)}%`);
+        else if (message.status) setOcrProgress(message.status === 'loading language traineddata' ? 'Baixando idioma português…' : 'Iniciando OCR…');
+      } });
+      let result = await worker.recognize(preparedImage);
+      let recognizedText = result.data.text || '';
+      if (recognizedText.trim().length < 24) {
+        setOcrProgress('Tentando uma segunda leitura…');
+        await worker.setParameters({ tessedit_pageseg_mode: '11' });
+        result = await worker.recognize(preparedImage);
+        if ((result.data.text || '').trim().length > recognizedText.trim().length) recognizedText = result.data.text;
+      }
+      applyLabelText(recognizedText);
     } catch (error) {
       console.error('Falha no OCR:', error);
-      setNotice({ text: 'Não foi possível ler a etiqueta. Preencha os dados manualmente.', type: 'error' });
+      setNotice({ text: 'Não foi possível processar a imagem. Verifique a internet na primeira leitura, tente outra foto ou preencha manualmente.', type: 'error' });
     } finally {
       if (worker) await worker.terminate().catch(() => {});
       setBusy(false);
+      setOcrProgress('');
     }
   }
 
   async function takePhoto() {
     try {
-      const photo = await Camera.getPhoto({
-        quality: 85,
-        allowEditing: false,
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Camera,
-        correctOrientation: true,
-      });
+      const photo = await Camera.getPhoto({ quality: 95, allowEditing: false, resultType: CameraResultType.DataUrl, source: CameraSource.Camera, correctOrientation: true });
       if (photo.dataUrl) await recognizeImage(photo.dataUrl);
     } catch (error) {
       if (error?.message) setNotice({ text: 'Câmera cancelada ou sem permissão. Você também pode escolher uma foto da galeria.', type: 'error' });
     }
   }
-
   async function chooseImage(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -176,33 +190,29 @@ export default function App() {
       setNotice({ text: 'Informe pelo menos o nome do morador ou o apartamento.', type: 'error' });
       return;
     }
-
     const entry = {
-      id: editingParcel?.id || (globalThis.crypto?.randomUUID?.() || String(Date.now())),
+      id: editingParcel?.id || newId(),
       receivedAt: editingParcel?.receivedAt || new Date().toISOString(),
       status: editingParcel?.status || 'Pendente',
       pickedUpBy: editingParcel?.pickedUpBy || '',
       leftAt: editingParcel?.leftAt || '',
-      data: { ...form },
+      data: { ...form, extraDetails: (form.extraDetails || []).filter(item => item.label?.trim() || item.value?.trim()) },
     };
-
+    const targetDay = editingParcel?.day || today;
     setParcels(current => {
-      const dayItems = [...(current[today] || [])];
-      if (editingParcel) {
-        const index = dayItems.findIndex(item => item.id === editingParcel.id);
-        if (index >= 0) dayItems[index] = entry;
-        else dayItems.unshift(entry);
-      } else dayItems.unshift(entry);
-      return { ...current, [today]: dayItems };
+      const next = { ...current };
+      const items = [...(next[targetDay] || [])];
+      const index = items.findIndex(item => item.id === entry.id);
+      if (index >= 0) items[index] = entry; else items.unshift(entry);
+      next[targetDay] = items;
+      return next;
     });
-
     if (ocrText && form.carrier.trim()) {
       const keyword = normalize(ocrText).split(/\s+/).map(word => word.replace(/[^A-Z0-9]/g, '')).find(word => word.length >= 5);
       if (keyword && !memory.some(item => item.keyword === keyword && item.carrier === form.carrier.trim())) {
         setMemory(current => [{ keyword, carrier: form.carrier.trim() }, ...current].slice(0, 100));
       }
     }
-
     setEditingParcel(null);
     setForm(emptyForm());
     setOcrText('');
@@ -212,37 +222,57 @@ export default function App() {
   function markPickedUp(parcel) {
     const pickedUpBy = window.prompt('Nome de quem retirou a encomenda:');
     if (!pickedUpBy?.trim()) return;
-    setParcels(current => ({
-      ...current,
-      [today]: (current[today] || []).map(item => item.id === parcel.id
-        ? { ...item, status: 'Retirado', pickedUpBy: pickedUpBy.trim(), leftAt: new Date().toISOString() }
-        : item),
-    }));
+    setParcels(current => ({ ...current, [parcel.day]: (current[parcel.day] || []).map(item => item.id === parcel.id
+      ? { ...item, status: 'Retirado', pickedUpBy: pickedUpBy.trim(), leftAt: new Date().toISOString() } : item) }));
   }
-
   function deleteParcel(parcel) {
     if (!window.confirm('Excluir esta encomenda?')) return;
-    setParcels(current => ({ ...current, [today]: (current[today] || []).filter(item => item.id !== parcel.id) }));
+    setParcels(current => ({ ...current, [parcel.day]: (current[parcel.day] || []).filter(item => item.id !== parcel.id) }));
   }
 
+  function addFamilyMember() {
+    setResidentForm(current => ({ ...current, family: [...(current.family || []), { id: newId(), name: '', relation: '' }] }));
+  }
+  function updateFamilyMember(id, key, value) {
+    setResidentForm(current => ({ ...current, family: (current.family || []).map(person => person.id === id ? { ...person, [key]: value } : person) }));
+  }
   function saveResident(event) {
     event.preventDefault();
     if (!residentForm.name.trim() || !residentForm.apartment.trim()) return;
-    const resident = { id: editingResidentId || (globalThis.crypto?.randomUUID?.() || String(Date.now())), ...residentForm, family: [] };
-    setResidents(current => editingResidentId
-      ? current.map(item => item.id === editingResidentId ? { ...item, ...resident } : item)
-      : [resident, ...current]);
-    setResidentForm({ name: '', apartment: '', phone: '' });
+    const resident = { ...residentForm, id: editingResidentId || newId(), family: (residentForm.family || []).filter(person => person.name.trim()) };
+    setResidents(current => editingResidentId ? current.map(item => item.id === editingResidentId ? resident : item) : [resident, ...current]);
+    setResidentForm(emptyResidentForm());
     setEditingResidentId(null);
   }
-
   function editResident(resident) {
-    setResidentForm({ name: resident.name, apartment: resident.apartment, phone: resident.phone || '' });
+    setResidentForm({ name: resident.name || '', apartment: resident.apartment || '', phone: resident.phone || '', photo: resident.photo || '', family: resident.family || [] });
     setEditingResidentId(resident.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+  async function chooseResidentPhoto(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file);
+      });
+      const image = await new Promise((resolve, reject) => {
+        const element = new Image(); element.onload = () => resolve(element); element.onerror = reject; element.src = dataUrl;
+      });
+      const scale = Math.min(1, 600 / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      setResidentForm(current => ({ ...current, photo: canvas.toDataURL('image/jpeg', 0.78) }));
+    } catch { setNotice({ text: 'Não foi possível carregar essa foto. Tente outra imagem.', type: 'error' }); }
+  }
+  function deleteResident(resident) {
+    if (!window.confirm(`Excluir o cadastro de ${resident.name}?`)) return;
+    setResidents(current => current.filter(item => item.id !== resident.id));
+  }
 
-  function exportPdf(day) {
+  async function exportPdf(day) {
     const doc = new jsPDF();
     const rows = parcels[day] || [];
     doc.setFontSize(16);
@@ -250,94 +280,84 @@ export default function App() {
     doc.setFontSize(10);
     let y = 30;
     rows.forEach((item, index) => {
-      const received = new Date(item.receivedAt).toLocaleString('pt-BR');
+      const received = item.receivedAt ? new Date(item.receivedAt).toLocaleString('pt-BR') : 'Não informado';
       const left = item.leftAt ? new Date(item.leftAt).toLocaleString('pt-BR') : 'Ainda pendente';
       const details = FIELD_LIST.map(field => item.data[field.id] ? `${field.label}: ${item.data[field.id]}` : '').filter(Boolean).join(' | ');
-      const lines = doc.splitTextToSize(`${index + 1}. ${item.status} | Recebido: ${received} | Retirada: ${left}${item.pickedUpBy ? ` por ${item.pickedUpBy}` : ''} | ${details}`, 180);
+      const extra = (item.data.extraDetails || []).map(detail => `${detail.label || 'Detalhe'}: ${detail.value || ''}`).join(' | ');
+      const lines = doc.splitTextToSize(`${index + 1}. ${item.status || 'Pendente'} | Recebido: ${received} | Retirada: ${left}${item.pickedUpBy ? ` por ${item.pickedUpBy}` : ''} | ${[details, extra].filter(Boolean).join(' | ')}`, 180);
       if (y + lines.length * 6 > 280) { doc.addPage(); y = 20; }
       doc.text(lines, 14, y);
       y += lines.length * 6 + 5;
     });
-    doc.save(`portaria-encomendas-${day}.pdf`);
+    const filename = `portaria-encomendas-${day}.pdf`;
+    if (!Capacitor.isNativePlatform()) { doc.save(filename); return; }
+    try {
+      const dataUri = doc.output('datauristring');
+      await Filesystem.writeFile({ path: `relatorio de encomendas/${filename}`, data: dataUri.slice(dataUri.indexOf(',') + 1), directory: Directory.Documents, recursive: true });
+      window.alert(`PDF salvo na pasta de documentos do app: relatorio de encomendas/${filename}.`);
+    } catch (error) {
+      console.error('Falha ao salvar PDF no aparelho:', error);
+      doc.save(filename);
+      window.alert('Não foi possível salvar na pasta do app. O PDF foi baixado pelo método alternativo.');
+    }
   }
 
   function renderParcelCard(parcel) {
-    const received = new Date(parcel.receivedAt).toLocaleString('pt-BR');
-    return (
-      <article className="list-card" key={parcel.id}>
-        <div className="card-topline">
-          <span className={`badge ${parcel.status === 'Retirado' ? 'badge-done' : 'badge-pending'}`}>{parcel.status}</span>
-          <span className="muted">Recebido: {received}</span>
-        </div>
-        <h3>{parcel.data.resident || 'Morador não informado'}</h3>
-        <p>{parcel.data.apartment || 'Apartamento não informado'}{parcel.data.carrier ? ` · ${parcel.data.carrier}` : ''}</p>
-        {parcel.data.tracking && <p className="muted">{parcel.data.tracking}</p>}
-        {parcel.status === 'Retirado' && <p className="muted">Retirado por {parcel.pickedUpBy} · {new Date(parcel.leftAt).toLocaleString('pt-BR')}</p>}
-        <div className="button-row">
-          {parcel.status !== 'Retirado' && <button className="button small green" onClick={() => markPickedUp(parcel)}>Registrar retirada</button>}
-          <button className="button small secondary" onClick={() => { setEditingParcel(parcel); setForm(parcel.data); setTab('desk'); }}>Editar</button>
-          <button className="button small red" onClick={() => deleteParcel(parcel)}>Excluir</button>
-        </div>
-      </article>
-    );
+    const received = parcel.receivedAt ? new Date(parcel.receivedAt).toLocaleString('pt-BR') : 'Data não informada';
+    const extraDetails = parcel.data.extraDetails || [];
+    return <article className="list-card" key={`${parcel.day}-${parcel.id}`}>
+      <div className="card-topline"><span className={`badge ${parcel.status === 'Retirado' ? 'badge-done' : 'badge-pending'}`}>{parcel.status || 'Pendente'}</span><span className="muted">{parcel.day} · Recebido: {received}</span></div>
+      <h3>{parcel.data.resident || 'Morador não informado'}</h3>
+      <p>{parcel.data.apartment || 'Apartamento não informado'}{parcel.data.carrier ? ` · ${parcel.data.carrier}` : ''}</p>
+      {parcel.data.tracking && <p className="muted">{parcel.data.tracking}</p>}
+      {extraDetails.filter(item => item.label || item.value).map((item, index) => <p className="muted" key={item.id || index}>{item.label || 'Detalhe'}: {item.value}</p>)}
+      {parcel.status === 'Retirado' && <p className="muted">Retirado por {parcel.pickedUpBy} · {parcel.leftAt ? new Date(parcel.leftAt).toLocaleString('pt-BR') : ''}</p>}
+      <div className="button-row">
+        {parcel.status !== 'Retirado' && <button className="button small green" onClick={() => markPickedUp(parcel)}>Registrar retirada</button>}
+        <button className="button small secondary" onClick={() => { setEditingParcel(parcel); setForm({ ...emptyForm(), ...parcel.data, extraDetails: parcel.data.extraDetails || [] }); setTab('desk'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Editar</button>
+        <button className="button small red" onClick={() => deleteParcel(parcel)}>Excluir</button>
+      </div>
+    </article>;
   }
 
   const reportDays = Object.keys(parcels).sort().reverse();
-
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div><p className="eyebrow">CONTROLE DE ENTREGAS</p><h1>Portaria</h1></div>
-        <button className="button header-button" onClick={() => setTab('residents')}>+ Morador</button>
-      </header>
-
-      <main className="main-content">
-        {tab === 'desk' && <section>
-          <div className="panel">
-            <h2>Receber encomenda</h2>
-            <p className="help-text">Fotografe a etiqueta ou preencha os dados. Revise as sugestões do OCR antes de registrar.</p>
-            <div className="capture-grid">
-              <button className="button camera-button" disabled={busy} onClick={takePhoto}>{busy ? 'Lendo etiqueta…' : 'Abrir câmera'}</button>
-              <label className="button gallery-button">Escolher foto<input type="file" accept="image/*" onChange={chooseImage} disabled={busy} /></label>
-            </div>
-            <div className={`notice ${notice.type}`} role="status">{notice.text}</div>
-            <form onSubmit={saveParcel}>
-              {FIELD_LIST.map(field => <label className="field-label" key={field.id}>{field.label}<input value={form[field.id]} onChange={event => updateField(field.id, event.target.value)} placeholder={field.id === 'apartment' ? 'Ex.: Bloco A, apartamento 204' : ''} /></label>)}
-              <button className="button green full" type="submit">{editingParcel ? 'Atualizar encomenda' : 'Registrar recebimento'}</button>
-              {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); }}>Cancelar edição</button>}
-            </form>
-          </div>
-          <div className="panel">
-            <div className="section-heading"><h2>Encomendas de hoje</h2><span className="count-pill">{todayParcels.length}</span></div>
-            <input className="search-input" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por morador, apto ou transportadora" />
-            {filteredParcels.length ? filteredParcels.map(renderParcelCard) : <p className="empty">Nenhuma encomenda encontrada hoje.</p>}
-          </div>
-        </section>}
-
-        {tab === 'residents' && <section>
-          <div className="panel">
-            <h2>{editingResidentId ? 'Editar morador' : 'Cadastrar morador'}</h2>
-            <form onSubmit={saveResident}>
-              <label className="field-label">Nome<input required value={residentForm.name} onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))} /></label>
-              <label className="field-label">Apartamento / bloco<input required value={residentForm.apartment} onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))} placeholder="Ex.: Bloco A, apto 204" /></label>
-              <label className="field-label">Telefone (opcional)<input type="tel" value={residentForm.phone} onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))} /></label>
-              <button className="button green full" type="submit">{editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}</button>
-            </form>
-          </div>
-          <div className="panel"><h2>Moradores cadastrados</h2>{residents.length ? residents.map(resident => <article className="list-card" key={resident.id}><h3>{resident.name}</h3><p>{resident.apartment}{resident.phone ? ` · ${resident.phone}` : ''}</p><div className="button-row"><button className="button small secondary" onClick={() => editResident(resident)}>Editar</button><button className="button small red" onClick={() => { if (window.confirm(`Excluir ${resident.name}?`)) setResidents(current => current.filter(item => item.id !== resident.id)); }}>Excluir</button></div></article>) : <p className="empty">Cadastre moradores para facilitar a conferência.</p>}</div>
-        </section>}
-
-        {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">Os registros ficam salvos neste celular. Exporte cópias periódicas para não perder os dados.</p>{reportDays.length ? reportDays.map(day => <article className="report-row" key={day}><div><strong>{new Date(`${day}T12:00:00`).toLocaleDateString('pt-BR')}</strong><p className="muted">{parcels[day].length} encomenda(s)</p></div><button className="button small green" onClick={() => exportPdf(day)}>Exportar PDF</button></article>) : <p className="empty">Ainda não há registros para exportar.</p>}</section>}
-
-        {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR em português e regras locais para sugerir nome, apartamento e transportadora. Isso é uma assistência automatizada, não uma identificação garantida: confira sempre os dados.</p><h3 className="subheading">Sugestões de transportadoras</h3>{CARRIER_HINTS.map(([word, carrier]) => <div className="memory-row" key={word}><span>{word}</span><strong>{carrier}</strong></div>)}{memory.length > 0 && <><h3 className="subheading">Aprendizados locais</h3>{memory.slice(0, 30).map((item, index) => <div className="memory-row" key={`${item.keyword}-${index}`}><span>{item.keyword}</span><strong>{item.carrier}</strong></div>)}</>}</section>}
-      </main>
-
-      <nav className="bottom-nav" aria-label="Navegação principal">
-        <button className={tab === 'desk' ? 'active' : ''} onClick={() => setTab('desk')}><span>⌂</span>Portaria</button>
-        <button className={tab === 'residents' ? 'active' : ''} onClick={() => setTab('residents')}><span>♙</span>Moradores</button>
-        <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}><span>▤</span>Relatórios</button>
-        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}><span>⚙</span>IA</button>
-      </nav>
-    </div>
-  );
+  return <div className="app-shell">
+    <header className="app-header"><div><p className="eyebrow">CONTROLE DE ENTREGAS</p><h1>Portaria</h1></div><button className="button header-button" onClick={() => { setTab('residents'); setEditingResidentId(null); setResidentForm(emptyResidentForm()); }}>+ Morador</button></header>
+    <main className="main-content">
+      {tab === 'desk' && <section>
+        <div className="panel"><h2>{editingParcel ? 'Editar encomenda' : 'Receber encomenda'}</h2><p className="help-text">Fotografe a etiqueta ou preencha os dados. O OCR é uma sugestão: confira o texto e revise os campos antes de registrar.</p>
+          <div className="capture-grid"><button type="button" className="button camera-button" disabled={busy} onClick={takePhoto}>{busy ? 'Lendo etiqueta…' : 'Abrir câmera'}</button><label className={`button gallery-button${busy ? ' disabled' : ''}`}>Escolher foto<input type="file" accept="image/*" onChange={chooseImage} disabled={busy} /></label></div>
+          <div className={`notice ${notice.type}`} role="status" aria-live="polite">{busy && ocrProgress ? `${notice.text} ${ocrProgress}` : notice.text}</div>
+          {!!ocrText && <div className="ocr-result"><label className="field-label" htmlFor="ocr-text">Texto reconhecido (você pode corrigir e aplicar novamente)</label><textarea id="ocr-text" className="ocr-textarea" value={ocrText} onChange={event => setOcrText(event.target.value)} rows={6} /><button type="button" className="button secondary full" onClick={() => applyLabelText(ocrText)}>Aplicar texto aos campos</button></div>}
+          <form onSubmit={saveParcel}>
+            {FIELD_LIST.map(field => <label className="field-label" key={field.id}>{field.label}<input value={form[field.id] || ''} onChange={event => updateField(field.id, event.target.value)} placeholder="Confira e complete os dados" /></label>)}
+            <div className="section-heading extra-heading"><h3>Detalhes adicionais da etiqueta</h3></div>
+            {(form.extraDetails || []).map((detail, index) => <div key={detail.id || index} className="extra-detail-row"><label className="field-label">Detalhe<input value={detail.label || ''} onChange={event => setForm(current => ({ ...current, extraDetails: current.extraDetails.map((item, i) => i === index ? { ...item, label: event.target.value } : item) }))} placeholder="Ex.: Cor, tamanho" /></label><label className="field-label">Informação<input value={detail.value || ''} onChange={event => setForm(current => ({ ...current, extraDetails: current.extraDetails.map((item, i) => i === index ? { ...item, value: event.target.value } : item) }))} placeholder="Digite o detalhe" /></label><button type="button" className="button small red" aria-label="Remover detalhe" onClick={() => setForm(current => ({ ...current, extraDetails: current.extraDetails.filter((_, i) => i !== index) }))}>Remover</button></div>)}
+            <button type="button" className="button secondary full" onClick={() => setForm(current => ({ ...current, extraDetails: [...(current.extraDetails || []), { id: newId(), label: '', value: '' }] }))}>+ Adicionar detalhe</button>
+            <button className="button green full" type="submit">{editingParcel ? 'Atualizar encomenda' : 'Registrar recebimento'}</button>
+            {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); }}>Cancelar edição</button>}
+          </form>
+        </div>
+        <div className="panel"><div className="section-heading"><h2>Encomendas de hoje</h2><span className="count-pill">{todayParcels.length}</span></div><input className="search-input" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por morador, apto ou transportadora" aria-label="Buscar encomendas" />{filteredParcels.length ? filteredParcels.map(item => renderParcelCard({ ...item, day: today })) : <p className="empty">Nenhuma encomenda encontrada hoje.</p>}</div>
+        <div className="panel"><div className="section-heading"><h2>Encomendas pendentes</h2><span className="count-pill">{pendingParcels.length}</span></div><p className="help-text">Inclui as encomendas ainda não retiradas, mesmo quando foram registradas em dias anteriores.</p>{filteredPending.length ? filteredPending.map(renderParcelCard) : <p className="empty">Não há encomendas pendentes{query.trim() ? ' correspondentes à busca' : ''}.</p>}</div>
+      </section>}
+      {tab === 'residents' && <section>
+        <div className="panel"><h2>{editingResidentId ? 'Editar morador' : 'Cadastrar morador'}</h2><form onSubmit={saveResident}>
+          <label className="field-label">Nome<input required value={residentForm.name} onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))} autoComplete="name" /></label>
+          <label className="field-label">Apartamento / bloco<input required value={residentForm.apartment} onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))} /></label>
+          <label className="field-label">Telefone (opcional)<input type="tel" value={residentForm.phone} onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))} autoComplete="tel" /></label>
+          <label className="field-label">Foto do morador<input type="file" accept="image/*" onChange={chooseResidentPhoto} /></label>
+          {residentForm.photo && <img src={residentForm.photo} alt="Prévia da foto do morador" className="resident-preview" />}
+          <div className="section-heading family-heading"><h3>Parentes / membros do apartamento</h3><button type="button" className="button small secondary" onClick={addFamilyMember}>+ Adicionar</button></div>
+          {(residentForm.family || []).map(person => <div className="list-card" key={person.id}><label className="field-label">Nome<input value={person.name || ''} onChange={event => updateFamilyMember(person.id, 'name', event.target.value)} /></label><label className="field-label">Parentesco / relação<input value={person.relation || ''} onChange={event => updateFamilyMember(person.id, 'relation', event.target.value)} placeholder="Ex.: cônjuge, filho" /></label><button type="button" className="button small red" onClick={() => setResidentForm(current => ({ ...current, family: current.family.filter(item => item.id !== person.id) }))}>Remover membro</button></div>)}
+          <button className="button green full" type="submit">{editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}</button>
+          {editingResidentId && <button className="button secondary full" type="button" onClick={() => { setEditingResidentId(null); setResidentForm(emptyResidentForm()); }}>Cancelar edição</button>}
+        </form></div>
+        <div className="panel"><h2>Moradores cadastrados</h2>{residents.length ? residents.map(resident => <article className="list-card resident-card" key={resident.id}>{resident.photo && <img src={resident.photo} alt={`Foto de ${resident.name}`} className="resident-photo" />}<h3>{resident.name}</h3><p>{resident.apartment}{resident.phone ? ` · ${resident.phone}` : ''}</p>{(resident.family || []).length > 0 && <p className="muted">Membros: {resident.family.map(person => `${person.name}${person.relation ? ` (${person.relation})` : ''}`).join(', ')}</p>}<div className="button-row"><button className="button small secondary" onClick={() => editResident(resident)}>Editar</button><button className="button small red" onClick={() => deleteResident(resident)}>Excluir</button></div></article>) : <p className="empty">Nenhum morador cadastrado.</p>}</div>
+      </section>}
+      {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">No Android, os arquivos ficam no armazenamento de documentos do app, na pasta “relatorio de encomendas”. Na versão web, são baixados pelo navegador.</p>{reportDays.length ? reportDays.map(day => <div className="report-row" key={day}><div><strong>{day}</strong><p className="muted">{(parcels[day] || []).length} encomenda(s)</p></div><button className="button small green" onClick={() => exportPdf(day)}>Salvar PDF</button></div>) : <p className="empty">Ainda não há relatórios.</p>}</section>}
+      {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">Na primeira leitura, conecte o celular à internet para baixar os dados do idioma português. Confira sempre o texto reconhecido e revise os campos.</p><h3 className="subheading">Transportadoras aprendidas</h3>{memory.length ? memory.slice(0, 20).map((item, index) => <div className="memory-row" key={`${item.keyword}-${index}`}><span>{item.keyword}</span><strong>{item.carrier}</strong></div>) : <p className="empty">Ainda não há sugestões aprendidas.</p>}</section>}
+    </main>
+    <nav className="bottom-nav" aria-label="Navegação principal"><button className={tab === 'desk' ? 'active' : ''} onClick={() => setTab('desk')}><span>⌂</span>Portaria</button><button className={tab === 'residents' ? 'active' : ''} onClick={() => setTab('residents')}><span>♙</span>Moradores</button><button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}><span>▤</span>Relatórios</button><button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}><span>⚙</span>OCR</button></nav>
+  </div>;
 }
