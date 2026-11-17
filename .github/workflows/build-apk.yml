@@ -33,7 +33,12 @@ jobs:
           java-version: '17'
 
       - name: Add Android platform
-        run: npx cap add android
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          else
+            echo "Android project already exists; skipping add."
+          fi
 
       - name: Sync native Android project
         run: npx cap sync android
@@ -42,7 +47,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
