@@ -1,5 +1,3 @@
-// src/App.jsx
-
 import React, { useEffect, useMemo, useState } from 'react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -91,28 +89,20 @@ async function prepImageForOcr(source) {
 }
 
 function cleanLine(line = '') {
-  return String(line).replace(/\\s+/g, ' ').trim();
+  return String(line).replace(/\s+/g, ' ').trim();
 }
 
 function extractBestResident(text) {
-  const lines = text.split(/\\r?\\n/).map(cleanLine).filter(Boolean);
-  const normalized = normalize(text);
+  const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
+  const explicit = ['DESTINATARIO', 'DESTINATÁRIO', 'RECEBEDOR', 'CLIENTE', 'DESTINO'];
 
-  const explicit = [
-    'DESTINATARIO',
-    'DESTINATÁRIO',
-    'RECEBEDOR',
-    'CLIENTE',
-    'DESTINO',
-  ];
-
-  const findByLabel = (labels) => {
+  const findByLabel = labels => {
     for (let i = 0; i < lines.length; i++) {
       const line = normalize(lines[i]);
       const found = labels.find(label => line.includes(normalize(label)));
       if (!found) continue;
       const index = line.indexOf(normalize(found));
-      const tail = lines[i].slice(index + found.length).replace(/^\\s*[:#-]?\\s*/, '').trim();
+      const tail = lines[i].slice(index + found.length).replace(/^\s*[:#-]?\s*/, '').trim();
       if (tail && tail.length > 2) return tail;
       if (lines[i + 1]) return lines[i + 1];
     }
@@ -122,12 +112,12 @@ function extractBestResident(text) {
   const candidate = findByLabel(explicit);
   if (candidate) return candidate;
 
-  const addressBlock = lines.findIndex(line => /\\b(RUA|AV\\.?|AVENIDA|ALAMEDA|TRAVESSA)\\b/i.test(line));
+  const addressBlock = lines.findIndex(line => /\b(RUA|AV\.?|AVENIDA|ALAMEDA|TRAVESSA)\b/i.test(line));
   if (addressBlock > 0) {
     const nearby = lines
       .slice(Math.max(0, addressBlock - 3), addressBlock)
       .reverse()
-      .find(line => /[A-Za-zÀ-ÿ]{2,}\\s+[A-Za-zÀ-ÿ]{2,}/.test(line) && !/\\b(AMAZON|BRASIL|FRETE|GRATIS|RAPIDO|PEDIDO|ENTREGA)\\b/i.test(normalize(line)));
+      .find(line => /[A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ]{2,}/.test(line) && !/\b(AMAZON|BRASIL|FRETE|GRATIS|RAPIDO|PEDIDO|ENTREGA)\b/i.test(normalize(line)));
     if (nearby) return nearby.replace(/^[^A-Za-zÀ-ÿ]+|[^A-Za-zÀ-ÿ.' -]+$/g, '').trim();
   }
 
@@ -136,11 +126,10 @@ function extractBestResident(text) {
 
 function extractBestApartment(text) {
   const lineText = normalize(text);
-
-  const labelMatch = /(?:APTO|APT|APARTAMENTO)\\s*[:#-]?\\s*([0-9A-Z]+)/i.exec(lineText);
+  const labelMatch = /(?:APTO|APT|APARTAMENTO)\s*[:#-]?\s*([0-9A-Z]+)/i.exec(lineText);
   if (labelMatch) return `Apto ${labelMatch[1]}`;
 
-  const fallbackMatch = /\\b([0-9]{3,4})\\b/.exec(text);
+  const fallbackMatch = /\b([0-9]{3,4})\b/.exec(text);
   if (fallbackMatch) return `Apto ${fallbackMatch[1]}`;
 
   return '';
@@ -151,11 +140,11 @@ function extractBestCarrier(text) {
   const carrier = CARRIER_HINTS.find(([needle]) => normalized.includes(needle));
   if (carrier) return carrier[1];
 
-  const lines = text.split(/\\r?\\n/).map(cleanLine).filter(Boolean);
+  const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
   for (let i = 0; i < lines.length; i++) {
     const line = normalize(lines[i]);
     if (line.includes('TRANSPORTADORA')) {
-      const tail = lines[i].replace(/.*TRANSPORTADORA/i, '').replace(/^\\s*[:#-]?\\s*/, '').trim();
+      const tail = lines[i].replace(/.*TRANSPORTADORA/i, '').replace(/^\s*[:#-]?\s*/, '').trim();
       return tail || '';
     }
   }
@@ -165,25 +154,18 @@ function extractBestCarrier(text) {
 
 function extractBestTracking(text) {
   const normalized = normalize(text);
+  const explicit = ['RASTREAMENTO', 'RASTREIO', 'TRACKING', 'CODIGO DO OBJETO', 'OBJETO'];
 
-  const explicit = [
-    'RASTREAMENTO',
-    'RASTREIO',
-    'TRACKING',
-    'CODIGO DO OBJETO',
-    'OBJETO',
-  ];
-
-  const lines = text.split(/\\r?\\n/).map(cleanLine).filter(Boolean);
+  const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
   for (let i = 0; i < lines.length; i++) {
     const line = normalize(lines[i]);
     const found = explicit.find(label => line.includes(normalize(label)));
     if (!found) continue;
-    const tail = lines[i].replace(new RegExp(found, 'ig'), '').replace(/^\\s*[:#-]?\\s*/, '').trim();
+    const tail = lines[i].replace(new RegExp(found, 'ig'), '').replace(/^\s*[:#-]?\s*/, '').trim();
     if (tail) return tail;
   }
 
-  const match = /\\b[A-Z]{2,5}\\d{6,}[A-Z0-9]*\\b/.exec(normalized);
+  const match = /\b[A-Z]{2,5}\d{6,}[A-Z0-9]*\b/.exec(normalized);
   if (match) return match[0];
 
   return '';
@@ -197,8 +179,8 @@ function parseOcrText(text) {
     tracking: extractBestTracking(text),
   };
 
-  if (!result.apartment && /\\b([0-9]{3,4})\\b/.test(text)) {
-    const found = text.match(/\\b([0-9]{3,4})\\b/);
+  if (!result.apartment && /\b([0-9]{3,4})\b/.test(text)) {
+    const found = text.match(/\b([0-9]{3,4})\b/);
     if (found) result.apartment = `Apto ${found[1]}`;
   }
 
@@ -285,7 +267,7 @@ export default function App() {
         logger: message => {
           if (message.status === 'recognizing text') setOcrProgress(`Lendo texto: ${Math.round((message.progress || 0) * 100)}%`);
           else if (message.status) setOcrProgress(message.status === 'loading language traineddata' ? 'Baixando idioma português…' : 'Iniciando OCR…');
-        }
+        },
       });
 
       const result = await worker.recognize(preparedImage);
@@ -302,7 +284,6 @@ export default function App() {
       } else {
         applyLabelText(recognizedText);
       }
-
     } catch (error) {
       console.error('Falha no OCR:', error);
       setNotice({ text: 'Não foi possível processar a imagem. Verifique a internet na primeira leitura, tente outra foto ou preencha manualmente.', type: 'error' });
@@ -320,7 +301,7 @@ export default function App() {
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
-        correctOrientation: true
+        correctOrientation: true,
       });
       if (photo.dataUrl) await recognizeImage(photo.dataUrl);
     } catch (error) {
@@ -364,7 +345,7 @@ export default function App() {
     });
 
     if (ocrText && form.carrier.trim()) {
-      const keyword = normalize(ocrText).split(/\\s+/).map(word => word.replace(/[^A-Z0-9]/g, '')).find(word => word.length >= 5);
+      const keyword = normalize(ocrText).split(/\s+/).map(word => word.replace(/[^A-Z0-9]/g, '')).find(word => word.length >= 5);
       if (keyword && !memory.some(item => item.keyword === keyword && item.carrier === form.carrier.trim())) {
         setMemory(current => [{ keyword, carrier: form.carrier.trim() }, ...current].slice(0, 100));
       }
@@ -630,5 +611,178 @@ export default function App() {
                 className="search-input"
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="Buscar por
-
+                placeholder="Buscar por nome, apartamento ou código"
+              />
+
+              {filteredParcels.length ? filteredParcels.map(renderParcelCard) : <p className="empty">Nenhuma encomenda encontrada hoje.</p>}
+            </div>
+
+            <div className="panel">
+              <div className="section-heading">
+                <h2>Encomendas pendentes</h2>
+                <span className="count-pill">{pendingParcels.length}</span>
+              </div>
+
+              <p className="help-text">Inclui encomendas ainda não retiradas.</p>
+
+              {filteredPending.length ? filteredPending.map(renderParcelCard) : <p className="empty">Nenhuma encomenda pendente encontrada.</p>}
+            </div>
+          </section>
+        )}
+
+        {tab === 'residents' && (
+          <section>
+            <div className="panel">
+              <h2>{editingResidentId ? 'Editar morador' : 'Cadastrar morador'}</h2>
+              <form onSubmit={saveResident}>
+                <label className="field-label">
+                  Nome
+                  <input
+                    required
+                    value={residentForm.name}
+                    onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))}
+                    autoComplete="name"
+                  />
+                </label>
+
+                <label className="field-label">
+                  Apartamento / bloco
+                  <input
+                    required
+                    value={residentForm.apartment}
+                    onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Telefone (opcional)
+                  <input
+                    type="tel"
+                    value={residentForm.phone}
+                    onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Foto do morador
+                  <input type="file" accept="image/*" onChange={chooseResidentPhoto} />
+                </label>
+
+                {residentForm.photo && <img src={residentForm.photo} alt="Prévia da foto do morador" className="resident-preview" />}
+
+                <div className="section-heading family-heading">
+                  <h3>Parentes / membros do apartamento</h3>
+                  <button type="button" className="button small secondary" onClick={addFamilyMember}>+ Adicionar familiar</button>
+                </div>
+
+                {(residentForm.family || []).map(person => (
+                  <div className="list-card" key={person.id}>
+                    <label className="field-label">
+                      Nome
+                      <input
+                        value={person.name || ''}
+                        onChange={event => setResidentForm(current => ({ ...current, family: (current.family || []).map(item => item.id === person.id ? { ...item, name: event.target.value } : item) }))}
+                      />
+                    </label>
+
+                    <label className="field-label">
+                      Parentesco
+                      <input
+                        value={person.relation || ''}
+                        onChange={event => setResidentForm(current => ({ ...current, family: (current.family || []).map(item => item.id === person.id ? { ...item, relation: event.target.value } : item) }))}
+                      />
+                    </label>
+                  </div>
+                ))}
+
+                <button className="button green full" type="submit">{editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}</button>
+                {editingResidentId && <button className="button secondary full" type="button" onClick={() => { setEditingResidentId(null); setResidentForm(emptyResidentForm()); }}>Cancelar edição</button>}
+              </form>
+            </div>
+
+            <div className="panel">
+              <h2>Moradores cadastrados</h2>
+
+              <input
+                className="search-input"
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="Buscar morador por nome ou apartamento"
+              />
+
+              {residents.length ? (
+                <div className="resident-directory">
+                  {residents
+                    .filter(resident => {
+                      const term = normalize(query.trim());
+                      if (!term) return true;
+                      return normalize(`${resident.name} ${resident.apartment} ${resident.phone}`).includes(term);
+                    })
+                    .sort((a, b) => {
+                      const apartmentA = Number.parseInt((a.apartment || '').match(/\d+/)?.[0] || '9999', 10);
+                      const apartmentB = Number.parseInt((b.apartment || '').match(/\d+/)?.[0] || '9999', 10);
+                      return apartmentA - apartmentB || (a.name || '').localeCompare(b.name || '', 'pt-BR');
+                    })
+                    .map(resident => (
+                      <article className="list-card resident-card" key={resident.id}>
+                        <div className="resident-card-header">
+                          <h3>{resident.name}</h3>
+                          <span className="resident-apartment-pill">{resident.apartment}</span>
+                        </div>
+
+                        <p>{resident.phone ? `WhatsApp: ${resident.phone}` : 'WhatsApp não informado'}</p>
+
+                        {(resident.family || []).length > 0 && (
+                          <div className="resident-family">
+                            {(resident.family || []).map((person, index) => (
+                              <div key={person.id || index} className="resident-family-item">
+                                {person.name} {person.relation ? `(${person.relation})` : ''}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="button-row">
+                          <button className="button small secondary" onClick={() => editResident(resident)}>Editar</button>
+                          <button className="button small red" onClick={() => deleteResident(resident)}>Excluir</button>
+                        </div>
+                      </article>
+                    ))}
+                </div>
+              ) : (
+                <p className="empty">Nenhum morador cadastrado.</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {tab === 'reports' && (
+          <section className="panel">
+            <h2>Relatórios PDF</h2>
+            <p className="help-text">No Android, os arquivos ficam no armazenamento de documentos do app, na pasta “relatorio de encomendas”.</p>
+            {reportDays.length ? reportDays.map(day => (
+              <div key={day} className="report-row" role="presentation">
+                <span>{day}</span>
+                <button className="button small green" onClick={() => exportPdf(day)}>Baixar PDF</button>
+              </div>
+            )) : <p className="empty">Ainda não há relatórios.</p>}
+          </section>
+        )}
+
+        {tab === 'settings' && (
+          <section className="panel">
+            <h2>Leitura inteligente</h2>
+            <p className="help-text">Na primeira leitura, conecte o celular à internet para baixar o idioma português do OCR.</p>
+          </section>
+        )}
+      </main>
+
+      <nav className="bottom-nav" aria-label="Navegação principal">
+        <button className={tab === 'desk' ? 'active' : ''} onClick={() => setTab('desk')}><span>⌂</span>Portaria</button>
+        <button className={tab === 'residents' ? 'active' : ''} onClick={() => setTab('residents')}><span>👤</span>Moradores</button>
+        <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}><span>📄</span>Relatórios</button>
+        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}><span>⚙️</span>OCR</button>
+      </nav>
+    </div>
+  );
+}
