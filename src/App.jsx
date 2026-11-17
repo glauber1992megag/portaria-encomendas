@@ -56,6 +56,12 @@ function newId() {
   return globalThis.crypto?.randomUUID?.() || String(Date.now() + Math.random());
 }
 
+function cleanupExtraDetails(details = []) {
+  return (Array.isArray(details) ? details : [])
+    .filter(item => item && (item.label?.trim() || item.value?.trim()))
+    .map(item => ({ ...item, label: item.label || '', value: item.value || '' }));
+}
+
 async function prepImageForOcr(source) {
   let objectUrl;
   const imageUrl = source instanceof Blob ? (objectUrl = URL.createObjectURL(source)) : source;
@@ -70,6 +76,7 @@ async function prepImageForOcr(source) {
 
     const maxSide = Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height);
     const scale = Math.min(2, 1800 / maxSide);
+
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
     canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
@@ -97,10 +104,11 @@ function extractBestResident(text) {
   const explicit = ['DESTINATARIO', 'DESTINATÁRIO', 'RECEBEDOR', 'CLIENTE', 'DESTINO'];
 
   const findByLabel = labels => {
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = 0; i < lines.length; i += 1) {
       const line = normalize(lines[i]);
       const found = labels.find(label => line.includes(normalize(label)));
       if (!found) continue;
+
       const index = line.indexOf(normalize(found));
       const tail = lines[i].slice(index + found.length).replace(/^\s*[:#-]?\s*/, '').trim();
       if (tail && tail.length > 2) return tail;
@@ -117,7 +125,11 @@ function extractBestResident(text) {
     const nearby = lines
       .slice(Math.max(0, addressBlock - 3), addressBlock)
       .reverse()
-      .find(line => /[A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ]{2,}/.test(line) && !/\b(AMAZON|BRASIL|FRETE|GRATIS|RAPIDO|PEDIDO|ENTREGA)\b/i.test(normalize(line)));
+      .find(line =>
+        /[A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ]{2,}/.test(line) &&
+        !/\b(AMAZON|BRASIL|FRETE|GRATIS|RAPIDO|PEDIDO|ENTREGA)\b/i.test(normalize(line))
+      );
+
     if (nearby) return nearby.replace(/^[^A-Za-zÀ-ÿ]+|[^A-Za-zÀ-ÿ.' -]+$/g, '').trim();
   }
 
@@ -141,7 +153,7 @@ function extractBestCarrier(text) {
   if (carrier) return carrier[1];
 
   const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i += 1) {
     const line = normalize(lines[i]);
     if (line.includes('TRANSPORTADORA')) {
       const tail = lines[i].replace(/.*TRANSPORTADORA/i, '').replace(/^\s*[:#-]?\s*/, '').trim();
@@ -157,10 +169,11 @@ function extractBestTracking(text) {
   const explicit = ['RASTREAMENTO', 'RASTREIO', 'TRACKING', 'CODIGO DO OBJETO', 'OBJETO'];
 
   const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i += 1) {
     const line = normalize(lines[i]);
     const found = explicit.find(label => line.includes(normalize(label)));
     if (!found) continue;
+
     const tail = lines[i].replace(new RegExp(found, 'ig'), '').replace(/^\s*[:#-]?\s*/, '').trim();
     if (tail) return tail;
   }
@@ -196,30 +209,75 @@ export default function App() {
   const [editingResidentId, setEditingResidentId] = useState(null);
   const [editingParcel, setEditingParcel] = useState(null);
   const [tab, setTab] = useState('desk');
-  const [notice, setNotice] = useState({ text: 'Registre a encomenda manualmente ou leia a etiqueta pela câmera.', type: 'info' });
+  const [notice, setNotice] = useState({
+    text: 'Registre a encomenda manualmente ou leia a etiqueta pela câmera.',
+    type: 'info',
+  });
   const [busy, setBusy] = useState(false);
   const [ocrProgress, setOcrProgress] = useState('');
   const [query, setQuery] = useState('');
   const [ocrText, setOcrText] = useState('');
 
-  useEffect(() => localStorage.setItem(STORAGE.residents, JSON.stringify(residents)), [residents]);
-  useEffect(() => localStorage.setItem(STORAGE.parcels, JSON.stringify(parcels)), [parcels]);
-  useEffect(() => localStorage.setItem(STORAGE.memory, JSON.stringify(memory)), [memory]);
+  useEffect(() => {
+    localStorage.setItem(STORAGE.residents, JSON.stringify(residents));
+  }, [residents]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE.parcels, JSON.stringify(parcels));
+  }, [parcels]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE.memory, JSON.stringify(memory));
+  }, [memory]);
 
   const today = localDateKey();
   const todayParcels = parcels[today] || [];
-  const pendingParcels = useMemo(() => Object.entries(parcels)
-    .flatMap(([day, items]) => (items || []).filter(item => item.status !== 'Retirado').map(item => ({ ...item, day })))
-    .sort((a, b) => String(b.receivedAt || '').localeCompare(String(a.receivedAt || ''))), [parcels]);
+
+  const pendingParcels = useMemo(() => {
+    return Object.entries(parcels)
+      .flatMap(([day, items]) => {
+        const normalizedItems = Array.isArray(items) ? items : [];
+        return normalizedItems
+          .filter(item => item && item.status !== 'Retirado')
+          .map(item => ({ ...item, day }));
+      })
+      .sort((a, b) => String(b.receivedAt || '').localeCompare(String(a.receivedAt || '')));
+  }, [parcels]);
+
+  function parcelSearchText(item) {
+    const data = item?.data || {};
+    return Object.entries(data)
+      .flatMap(([_, value]) => {
+        if (Array.isArray(value)) {
+          return value.flatMap(entry => {
+            if (typeof entry === 'object' && entry !== null) {
+              return [`${entry.label || ''}`, `${entry.value || ''}`];
+            }
+            return [String(entry)];
+          });
+        }
+
+        if (value && typeof value === 'object') {
+          return [JSON.stringify(value)];
+        }
+
+        return [String(value)];
+      })
+      .join(' ');
+  }
 
   const filteredParcels = useMemo(() => {
     const term = normalize(query.trim());
-    return term ? todayParcels.filter(item => normalize(Object.values(item.data || {}).flat().join(' ')).includes(term)) : todayParcels;
+    if (!term) return todayParcels;
+
+    return todayParcels.filter(item => normalize(parcelSearchText(item)).includes(term));
   }, [todayParcels, query]);
 
   const filteredPending = useMemo(() => {
     const term = normalize(query.trim());
-    return term ? pendingParcels.filter(item => normalize(`${Object.values(item.data || {}).flat().join(' ')} ${item.day}`).includes(term)) : pendingParcels;
+    if (!term) return pendingParcels;
+
+    return pendingParcels.filter(item => normalize(parcelSearchText(item) + ` ${item.day}`).includes(term));
   }, [pendingParcels, query]);
 
   function updateField(key, value) {
@@ -230,7 +288,10 @@ export default function App() {
     setOcrText(text);
 
     if (!text.trim()) {
-      setNotice({ text: 'A imagem foi processada, mas nenhum texto foi reconhecido. Tente aproximar e iluminar melhor a etiqueta.', type: 'error' });
+      setNotice({
+        text: 'A imagem foi processada, mas nenhum texto foi reconhecido. Tente aproximar e iluminar melhor a etiqueta.',
+        type: 'error',
+      });
       return;
     }
 
@@ -257,7 +318,10 @@ export default function App() {
     setBusy(true);
     setOcrProgress('Preparando imagem…');
     setOcrText('');
-    setNotice({ text: 'Preparando a etiqueta para leitura. Na primeira leitura, conecte o celular à internet para baixar o idioma português.', type: 'info' });
+    setNotice({
+      text: 'Preparando a etiqueta para leitura. Na primeira leitura, conecte o celular à internet para baixar o idioma português.',
+      type: 'info',
+    });
 
     let worker;
 
@@ -265,8 +329,13 @@ export default function App() {
       const preparedImage = await prepImageForOcr(image);
       worker = await createWorker('por', 1, {
         logger: message => {
-          if (message.status === 'recognizing text') setOcrProgress(`Lendo texto: ${Math.round((message.progress || 0) * 100)}%`);
-          else if (message.status) setOcrProgress(message.status === 'loading language traineddata' ? 'Baixando idioma português…' : 'Iniciando OCR…');
+          if (message.status === 'recognizing text') {
+            setOcrProgress(`Lendo texto: ${Math.round((message.progress || 0) * 100)}%`);
+          } else if (message.status === 'loading language traineddata') {
+            setOcrProgress('Baixando idioma português…');
+          } else if (message.status) {
+            setOcrProgress('Iniciando OCR…');
+          }
         },
       });
 
@@ -276,6 +345,7 @@ export default function App() {
       if (recognizedText.trim().length < 24) {
         await worker.setParameters({ tessedit_pageseg_mode: '11' });
         const retry = await worker.recognize(preparedImage);
+
         if ((retry.data.text || '').trim().length > recognizedText.trim().length) {
           applyLabelText(retry.data.text || recognizedText);
         } else {
@@ -286,7 +356,10 @@ export default function App() {
       }
     } catch (error) {
       console.error('Falha no OCR:', error);
-      setNotice({ text: 'Não foi possível processar a imagem. Verifique a internet na primeira leitura, tente outra foto ou preencha manualmente.', type: 'error' });
+      setNotice({
+        text: 'Não foi possível processar a imagem. Verifique a internet na primeira leitura, tente outra foto ou preencha manualmente.',
+        type: 'error',
+      });
     } finally {
       if (worker) await worker.terminate().catch(() => {});
       setBusy(false);
@@ -303,25 +376,38 @@ export default function App() {
         source: CameraSource.Camera,
         correctOrientation: true,
       });
-      if (photo.dataUrl) await recognizeImage(photo.dataUrl);
+
+      if (photo.dataUrl) {
+        await recognizeImage(photo.dataUrl);
+      }
     } catch (error) {
-      setNotice({ text: 'Câmera cancelada ou sem permissão. Você também pode escolher uma foto da galeria.', type: 'error' });
+      setNotice({
+        text: 'Câmera cancelada ou sem permissão. Você também pode escolher uma foto da galeria.',
+        type: 'error',
+      });
     }
   }
 
   async function chooseImage(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (file) await recognizeImage(file);
+    if (file) {
+      await recognizeImage(file);
+    }
   }
 
   function saveParcel(event) {
     event.preventDefault();
 
     if (!form.resident.trim() && !form.apartment.trim()) {
-      setNotice({ text: 'Informe pelo menos o nome do morador ou o apartamento.', type: 'error' });
+      setNotice({
+        text: 'Informe pelo menos o nome do morador ou o apartamento.',
+        type: 'error',
+      });
       return;
     }
+
+    const cleanedExtraDetails = cleanupExtraDetails(form.extraDetails);
 
     const entry = {
       id: editingParcel?.id || newId(),
@@ -329,7 +415,10 @@ export default function App() {
       status: editingParcel?.status || 'Pendente',
       pickedUpBy: editingParcel?.pickedUpBy || '',
       leftAt: editingParcel?.leftAt || '',
-      data: { ...form, extraDetails: (form.extraDetails || []).filter(item => item.label?.trim() || item.value?.trim()) },
+      data: {
+        ...form,
+        extraDetails: cleanedExtraDetails,
+      },
     };
 
     const targetDay = editingParcel?.day || today;
@@ -345,7 +434,11 @@ export default function App() {
     });
 
     if (ocrText && form.carrier.trim()) {
-      const keyword = normalize(ocrText).split(/\s+/).map(word => word.replace(/[^A-Z0-9]/g, '')).find(word => word.length >= 5);
+      const keyword = normalize(ocrText)
+        .split(/\s+/)
+        .map(word => word.replace(/[^A-Z0-9]/g, ''))
+        .find(word => word.length >= 5);
+
       if (keyword && !memory.some(item => item.keyword === keyword && item.carrier === form.carrier.trim())) {
         setMemory(current => [{ keyword, carrier: form.carrier.trim() }, ...current].slice(0, 100));
       }
@@ -360,26 +453,57 @@ export default function App() {
   function markPickedUp(parcel) {
     const pickedUpBy = window.prompt('Nome de quem retirou a encomenda:');
     if (!pickedUpBy?.trim()) return;
-    setParcels(current => ({ ...current, [parcel.day]: (current[parcel.day] || []).map(item => item.id === parcel.id
-      ? { ...item, status: 'Retirado', pickedUpBy: pickedUpBy.trim(), leftAt: new Date().toISOString() } : item) }));
+
+    setParcels(current => ({
+      ...current,
+      [parcel.day]: (current[parcel.day] || []).map(item =>
+        item.id === parcel.id
+          ? {
+              ...item,
+              status: 'Retirado',
+              pickedUpBy: pickedUpBy.trim(),
+              leftAt: new Date().toISOString(),
+            }
+          : item
+      ),
+    }));
   }
 
   function deleteParcel(parcel) {
     if (!window.confirm('Excluir esta encomenda?')) return;
-    setParcels(current => ({ ...current, [parcel.day]: (current[parcel.day] || []).filter(item => item.id !== parcel.id) }));
+
+    setParcels(current => ({
+      ...current,
+      [parcel.day]: (current[parcel.day] || []).filter(item => item.id !== parcel.id),
+    }));
   }
 
   function addFamilyMember() {
-    setResidentForm(current => ({ ...current, family: [...(current.family || []), { id: newId(), name: '', relation: '' }] }));
+    setResidentForm(current => ({
+      ...current,
+      family: [...(current.family || []), { id: newId(), name: '', relation: '' }],
+    }));
   }
 
   function updateFamilyMember(id, key, value) {
-    setResidentForm(current => ({ ...current, family: (current.family || []).map(person => person.id === id ? { ...person, [key]: value } : person) }));
+    setResidentForm(current => ({
+      ...current,
+      family: (current.family || []).map(person =>
+        person.id === id ? { ...person, [key]: value } : person
+      ),
+    }));
   }
 
   function saveResident(event) {
     event.preventDefault();
-    if (!residentForm.name.trim() || !residentForm.apartment.trim()) return;
+
+    if (!residentForm.name.trim() || !residentForm.apartment.trim()) {
+      setNotice({
+        text: 'Informe o nome e o apartamento do morador.',
+        type: 'error',
+      });
+      return;
+    }
 
     const resident = {
       ...residentForm,
@@ -387,10 +511,15 @@ export default function App() {
       family: (residentForm.family || []).filter(person => person.name.trim()),
     };
 
-    setResidents(current => editingResidentId ? current.map(item => item.id === editingResidentId ? resident : item) : [resident, ...current]);
+    setResidents(current =>
+      editingResidentId
+        ? current.map(item => (item.id === editingResidentId ? resident : item))
+        : [resident, ...current]
+    );
 
     setResidentForm(emptyResidentForm());
     setEditingResidentId(null);
+    setNotice({ text: 'Cadastro salvo com sucesso.', type: 'success' });
   }
 
   function editResident(resident) {
@@ -409,6 +538,7 @@ export default function App() {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+
     try {
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -431,7 +561,10 @@ export default function App() {
       canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
       setResidentForm(current => ({ ...current, photo: canvas.toDataURL('image/jpeg', 0.78) }));
     } catch {
-      setNotice({ text: 'Não foi possível carregar essa foto. Tente outra imagem.', type: 'error' });
+      setNotice({
+        text: 'Não foi possível carregar essa foto. Tente outra imagem.',
+        type: 'error',
+      });
     }
   }
 
@@ -443,6 +576,7 @@ export default function App() {
   async function exportPdf(day) {
     const doc = new jsPDF();
     const rows = parcels[day] || [];
+
     doc.setFontSize(16);
     doc.text(`Relatório de encomendas - ${day}`, 14, 18);
     doc.setFontSize(10);
@@ -452,11 +586,24 @@ export default function App() {
     rows.forEach((item, index) => {
       const received = item.receivedAt ? new Date(item.receivedAt).toLocaleString('pt-BR') : 'Não informado';
       const left = item.leftAt ? new Date(item.leftAt).toLocaleString('pt-BR') : 'Ainda pendente';
-      const details = FIELD_LIST.map(field => item.data[field.id] ? `${field.label}: ${item.data[field.id]}` : '').filter(Boolean).join(' | ');
-      const extra = (item.data.extraDetails || []).map(detail => `${detail.label || 'Detalhe'}: ${detail.value || ''}`).join(' | ');
-      const lines = doc.splitTextToSize(`${index + 1}. ${item.status || 'Pendente'} | Recebido: ${received} | Retirada: ${left}${item.pickedUpBy ? ` por ${item.pickedUpBy}` : ''} | ${[details, extra].filter(Boolean).join(' | ')}`, 180);
+      const details = FIELD_LIST.map(field => item.data[field.id] ? `${field.label}: ${item.data[field.id]}` : '')
+        .filter(Boolean)
+        .join(' | ');
 
-      if (y + lines.length * 6 > 280) { doc.addPage(); y = 20; }
+      const extra = (item.data.extraDetails || [])
+        .map(detail => `${detail.label || 'Detalhe'}: ${detail.value || ''}`)
+        .join(' | ');
+
+      const lines = doc.splitTextToSize(
+        `${index + 1}. ${item.status || 'Pendente'} | Recebido: ${received} | Retirada: ${left}${item.pickedUpBy ? ` por ${item.pickedUpBy}` : ''} | ${details}${extra ? ` | ${extra}` : ''}`,
+        180
+      );
+
+      if (y + lines.length * 6 > 280) {
+        doc.addPage();
+        y = 20;
+      }
+
       doc.text(lines, 14, y);
       y += lines.length * 6 + 5;
     });
@@ -486,25 +633,73 @@ export default function App() {
 
   function renderParcelCard(parcel) {
     const received = parcel.receivedAt ? new Date(parcel.receivedAt).toLocaleString('pt-BR') : 'Data não informada';
-    const extraDetails = parcel.data.extraDetails || [];
+    const extraDetails = Array.isArray(parcel.data.extraDetails) ? parcel.data.extraDetails : [];
 
     return (
       <article className="list-card" key={`${parcel.day}-${parcel.id}`}>
         <div className="card-topline">
-          <span className={`badge ${parcel.status === 'Retirado' ? 'badge-done' : 'badge-pending'}`}>{parcel.status || 'Pendente'}</span>
+          <span className={`badge ${parcel.status === 'Retirado' ? 'badge-done' : 'badge-pending'}`}>
+            {parcel.status || 'Pendente'}
+          </span>
           <span className="muted">Recebido: {received}</span>
         </div>
+
         <h3>{parcel.data.resident || 'Morador não informado'}</h3>
-        <p>{parcel.data.apartment || 'Apartamento não informado'}{parcel.data.carrier ? ` · ${parcel.data.carrier}` : ''}</p>
+        <p>
+          {parcel.data.apartment || 'Apartamento não informado'}
+          {parcel.data.carrier ? ` · ${parcel.data.carrier}` : ''}
+        </p>
         {parcel.data.tracking && <p className="muted">{parcel.data.tracking}</p>}
-        {extraDetails.filter(item => item.label || item.value).map((item, index) => (
-          <p className="muted" key={item.id || index}>{item.label || 'Detalhe'}: {item.value}</p>
-        ))}
-        {parcel.status === 'Retirado' && <p className="muted">Retirado por {parcel.pickedUpBy} · {parcel.leftAt ? new Date(parcel.leftAt).toLocaleString('pt-BR') : ''}</p>}
+
+        {extraDetails
+          .filter(item => item && (item.label || item.value))
+          .map((item, index) => (
+            <p className="muted" key={item.id || index}>
+              {item.label || 'Detalhe'}: {item.value}
+            </p>
+          ))}
+
+        {parcel.status === 'Retirado' && (
+          <p className="muted">
+            Retirado por {parcel.pickedUpBy} ·{' '}
+            {parcel.leftAt ? new Date(parcel.leftAt).toLocaleString('pt-BR') : ''}
+          </p>
+        )}
+
         <div className="button-row">
-          {parcel.status !== 'Retirado' && <button className="button small green" onClick={() => markPickedUp(parcel)}>Registrar retirada</button>}
-          <button className="button small secondary" onClick={() => { setEditingParcel(parcel); setForm({ ...emptyForm(), ...parcel.data, extraDetails: parcel.data.extraDetails || [] }); setTab('desk'); }}>Editar</button>
-          <button className="button small red" onClick={() => deleteParcel(parcel)}>Excluir</button>
+          {parcel.status !== 'Retirado' && (
+            <button
+              className="button small green"
+              type="button"
+              onClick={() => markPickedUp(parcel)}
+            >
+              Registrar retirada
+            </button>
+          )}
+
+          <button
+            className="button small secondary"
+            type="button"
+            onClick={() => {
+              setEditingParcel(parcel);
+              setForm({
+                ...emptyForm(),
+                ...parcel.data,
+                extraDetails: cleanupExtraDetails(parcel.data.extraDetails),
+              });
+              setTab('desk');
+            }}
+          >
+            Editar
+          </button>
+
+          <button
+            className="button small red"
+            type="button"
+            onClick={() => deleteParcel(parcel)}
+          >
+            Excluir
+          </button>
         </div>
       </article>
     );
@@ -519,7 +714,16 @@ export default function App() {
           <p className="eyebrow">CONTROLE DE ENTREGAS</p>
           <h1>Portaria</h1>
         </div>
-        <button className="button header-button" onClick={() => { setTab('residents'); setEditingParcel(null); }}>+ Morador</button>
+        <button
+          className="button header-button"
+          type="button"
+          onClick={() => {
+            setTab('residents');
+            setEditingParcel(null);
+          }}
+        >
+          + Morador
+        </button>
       </header>
 
       <main className="main-content">
@@ -527,10 +731,17 @@ export default function App() {
           <section>
             <div className="panel">
               <h2>{editingParcel ? 'Editar encomenda' : 'Receber encomenda'}</h2>
-              <p className="help-text">Fotografe a etiqueta ou preencha os dados. O OCR é uma sugestão: confirme antes de salvar.</p>
+              <p className="help-text">
+                Fotografe a etiqueta ou preencha os dados. O OCR é uma sugestão: confirme antes de salvar.
+              </p>
 
               <div className="capture-grid">
-                <button type="button" className="button camera-button" disabled={busy} onClick={takePhoto}>
+                <button
+                  type="button"
+                  className="button camera-button"
+                  disabled={busy}
+                  onClick={takePhoto}
+                >
                   {busy ? 'Lendo etiqueta…' : 'Abrir câmera'}
                 </button>
 
@@ -547,7 +758,11 @@ export default function App() {
               {!!ocrText && (
                 <div className="ocr-result">
                   <label className="field-label" htmlFor="ocr-text">Texto reconhecido</label>
-                  <textarea id="ocr-text" value={ocrText} onChange={event => setOcrText(event.target.value)} />
+                  <textarea
+                    id="ocr-text"
+                    value={ocrText}
+                    onChange={event => setOcrText(event.target.value)}
+                  />
                 </div>
               )}
 
@@ -569,7 +784,8 @@ export default function App() {
 
                 {(form.extraDetails || []).map((detail, index) => (
                   <div key={detail.id || index} className="extra-detail-row">
-                    <label className="field-label">Detalhe
+                    <label className="field-label">
+                      Detalhe
                       <input
                         value={detail.label || ''}
                         onChange={event => {
@@ -579,7 +795,9 @@ export default function App() {
                         }}
                       />
                     </label>
-                    <label className="field-label">Valor
+
+                    <label className="field-label">
+                      Valor
                       <input
                         value={detail.value || ''}
                         onChange={event => {
@@ -592,12 +810,33 @@ export default function App() {
                   </div>
                 ))}
 
-                <button type="button" className="button secondary full" onClick={() => setForm(current => ({ ...current, extraDetails: [...(current.extraDetails || []), { id: newId(), label: '', value: '' }] }))}>
+                <button
+                  type="button"
+                  className="button secondary full"
+                  onClick={() => setForm(current => ({
+                    ...current,
+                    extraDetails: [...(current.extraDetails || []), { id: newId(), label: '', value: '' }],
+                  }))}
+                >
                   + Adicionar detalhe
                 </button>
 
-                <button className="button green full" type="submit">{editingParcel ? 'Atualizar encomenda' : 'Registrar recebimento'}</button>
-                {editingParcel && <button className="button secondary full" type="button" onClick={() => { setEditingParcel(null); setForm(emptyForm()); }}>Cancelar edição</button>}
+                <button className="button green full" type="submit">
+                  {editingParcel ? 'Atualizar encomenda' : 'Registrar recebimento'}
+                </button>
+
+                {editingParcel && (
+                  <button
+                    type="button"
+                    className="button secondary full"
+                    onClick={() => {
+                      setEditingParcel(null);
+                      setForm(emptyForm());
+                    }}
+                  >
+                    Cancelar edição
+                  </button>
+                )}
               </form>
             </div>
 
@@ -614,7 +853,11 @@ export default function App() {
                 placeholder="Buscar por nome, apartamento ou código"
               />
 
-              {filteredParcels.length ? filteredParcels.map(renderParcelCard) : <p className="empty">Nenhuma encomenda encontrada hoje.</p>}
+              {filteredParcels.length ? (
+                filteredParcels.map(parcel => renderParcelCard({ ...parcel, day: today }))
+              ) : (
+                <p className="empty">Nenhuma encomenda encontrada hoje.</p>
+              )}
             </div>
 
             <div className="panel">
@@ -625,7 +868,11 @@ export default function App() {
 
               <p className="help-text">Inclui encomendas ainda não retiradas.</p>
 
-              {filteredPending.length ? filteredPending.map(renderParcelCard) : <p className="empty">Nenhuma encomenda pendente encontrada.</p>}
+              {filteredPending.length ? (
+                filteredPending.map(parcel => renderParcelCard(parcel))
+              ) : (
+                <p className="empty">Nenhuma encomenda pendente encontrada.</p>
+              )}
             </div>
           </section>
         )}
@@ -634,6 +881,7 @@ export default function App() {
           <section>
             <div className="panel">
               <h2>{editingResidentId ? 'Editar morador' : 'Cadastrar morador'}</h2>
+
               <form onSubmit={saveResident}>
                 <label className="field-label">
                   Nome
@@ -668,20 +916,39 @@ export default function App() {
                   <input type="file" accept="image/*" onChange={chooseResidentPhoto} />
                 </label>
 
-                {residentForm.photo && <img src={residentForm.photo} alt="Prévia da foto do morador" className="resident-preview" />}
+                {residentForm.photo && (
+                  <img
+                    src={residentForm.photo}
+                    alt="Prévia da foto do morador"
+                    className="resident-preview"
+                  />
+                )}
 
                 <div className="section-heading family-heading">
                   <h3>Parentes / membros do apartamento</h3>
-                  <button type="button" className="button small secondary" onClick={addFamilyMember}>+ Adicionar familiar</button>
+                  <button
+                    type="button"
+                    className="button small secondary"
+                    onClick={addFamilyMember}
+                  >
+                    + Adicionar familiar
+                  </button>
                 </div>
 
-                {(residentForm.family || []).map(person => (
-                  <div className="list-card" key={person.id}>
+                {(residentForm.family || []).map((person, index) => (
+                  <div className="list-card" key={person.id || index}>
                     <label className="field-label">
                       Nome
                       <input
                         value={person.name || ''}
-                        onChange={event => setResidentForm(current => ({ ...current, family: (current.family || []).map(item => item.id === person.id ? { ...item, name: event.target.value } : item) }))}
+                        onChange={event =>
+                          setResidentForm(current => ({
+                            ...current,
+                            family: (current.family || []).map(item =>
+                              item.id === person.id ? { ...item, name: event.target.value } : item
+                            ),
+                          }))
+                        }
                       />
                     </label>
 
@@ -689,14 +956,35 @@ export default function App() {
                       Parentesco
                       <input
                         value={person.relation || ''}
-                        onChange={event => setResidentForm(current => ({ ...current, family: (current.family || []).map(item => item.id === person.id ? { ...item, relation: event.target.value } : item) }))}
+                        onChange={event =>
+                          setResidentForm(current => ({
+                            ...current,
+                            family: (current.family || []).map(item =>
+                              item.id === person.id ? { ...item, relation: event.target.value } : item
+                            ),
+                          }))
+                        }
                       />
                     </label>
                   </div>
                 ))}
 
-                <button className="button green full" type="submit">{editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}</button>
-                {editingResidentId && <button className="button secondary full" type="button" onClick={() => { setEditingResidentId(null); setResidentForm(emptyResidentForm()); }}>Cancelar edição</button>}
+                <button className="button green full" type="submit">
+                  {editingResidentId ? 'Salvar alterações' : 'Cadastrar morador'}
+                </button>
+
+                {editingResidentId && (
+                  <button
+                    type="button"
+                    className="button secondary full"
+                    onClick={() => {
+                      setEditingResidentId(null);
+                      setResidentForm(emptyResidentForm());
+                    }}
+                  >
+                    Cancelar edição
+                  </button>
+                )}
               </form>
             </div>
 
@@ -716,7 +1004,9 @@ export default function App() {
                     .filter(resident => {
                       const term = normalize(query.trim());
                       if (!term) return true;
-                      return normalize(`${resident.name} ${resident.apartment} ${resident.phone}`).includes(term);
+
+                      return normalize(`${resident.name} ${resident.apartment} ${resident.phone}`)
+                        .includes(term);
                     })
                     .sort((a, b) => {
                       const apartmentA = Number.parseInt((a.apartment || '').match(/\d+/)?.[0] || '9999', 10);
@@ -743,8 +1033,21 @@ export default function App() {
                         )}
 
                         <div className="button-row">
-                          <button className="button small secondary" onClick={() => editResident(resident)}>Editar</button>
-                          <button className="button small red" onClick={() => deleteResident(resident)}>Excluir</button>
+                          <button
+                            className="button small secondary"
+                            type="button"
+                            onClick={() => editResident(resident)}
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            className="button small red"
+                            type="button"
+                            onClick={() => deleteResident(resident)}
+                          >
+                            Excluir
+                          </button>
                         </div>
                       </article>
                     ))}
@@ -759,29 +1062,52 @@ export default function App() {
         {tab === 'reports' && (
           <section className="panel">
             <h2>Relatórios PDF</h2>
-            <p className="help-text">No Android, os arquivos ficam no armazenamento de documentos do app, na pasta “relatorio de encomendas”.</p>
-            {reportDays.length ? reportDays.map(day => (
-              <div key={day} className="report-row" role="presentation">
-                <span>{day}</span>
-                <button className="button small green" onClick={() => exportPdf(day)}>Baixar PDF</button>
-              </div>
-            )) : <p className="empty">Ainda não há relatórios.</p>}
+            <p className="help-text">
+              No Android, os arquivos ficam no armazenamento de documentos do app, na pasta “relatorio de encomendas”.
+            </p>
+
+            {reportDays.length ? (
+              reportDays.map(day => (
+                <div key={day} className="report-row" role="presentation">
+                  <span>{day}</span>
+                  <button
+                    className="button small green"
+                    type="button"
+                    onClick={() => exportPdf(day)}
+                  >
+                    Baixar PDF
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="empty">Ainda não há relatórios.</p>
+            )}
           </section>
         )}
 
         {tab === 'settings' && (
           <section className="panel">
             <h2>Leitura inteligente</h2>
-            <p className="help-text">Na primeira leitura, conecte o celular à internet para baixar o idioma português do OCR.</p>
+            <p className="help-text">
+              Na primeira leitura, conecte o celular à internet para baixar o idioma português do OCR.
+            </p>
           </section>
         )}
       </main>
 
       <nav className="bottom-nav" aria-label="Navegação principal">
-        <button className={tab === 'desk' ? 'active' : ''} onClick={() => setTab('desk')}><span>⌂</span>Portaria</button>
-        <button className={tab === 'residents' ? 'active' : ''} onClick={() => setTab('residents')}><span>👤</span>Moradores</button>
-        <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}><span>📄</span>Relatórios</button>
-        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}><span>⚙️</span>OCR</button>
+        <button className={tab === 'desk' ? 'active' : ''} onClick={() => setTab('desk')}>
+          <span>⌂</span>Portaria
+        </button>
+        <button className={tab === 'residents' ? 'active' : ''} onClick={() => setTab('residents')}>
+          <span>👤</span>Moradores
+        </button>
+        <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>
+          <span>📄</span>Relatórios
+        </button>
+        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
+          <span>⚙️</span>OCR
+        </button>
       </nav>
     </div>
   );
