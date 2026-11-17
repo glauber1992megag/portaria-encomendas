@@ -4,7 +4,11 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import { createWorker } from 'tesseract.js';
-import { jsPDF } from 'jspdf';
+import {
+  getLocalAiMemory,
+  restoreAiMemory,
+  saveAiMemory,
+} from './aiBackup.js';
 
 const STORAGE = {
   residents: 'portaria_mobile_residents_v1',
