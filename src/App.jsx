@@ -253,6 +253,13 @@ export default function App() {
   };
 }, []);
 
+useEffect(() => {
+  localStorage.setItem(STORAGE.memory, JSON.stringify(memory));
+
+  saveAiMemory(memory).catch(error => {
+    console.error('Falha ao salvar o backup da IA:', error);
+  });
+}, [memory]);
   const today = localDateKey();
   const todayParcels = parcels[today] || [];
 
