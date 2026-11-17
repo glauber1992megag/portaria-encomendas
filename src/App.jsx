@@ -209,7 +209,10 @@ function parseOcrText(text) {
 export default function App() {
   const [residents, setResidents] = useState(() => load(STORAGE.residents, []));
   const [parcels, setParcels] = useState(() => load(STORAGE.parcels, {}));
-  const [memory, setMemory] = useState(() => load(STORAGE.memory, []));
+  const [memory, setMemory] = useState(() => {
+  const localMemory = load(STORAGE.memory, []);
+  return localMemory.length ? localMemory : getLocalAiMemory();
+});
   const [form, setForm] = useState(emptyForm);
   const [residentForm, setResidentForm] = useState(emptyResidentForm);
   const [editingResidentId, setEditingResidentId] = useState(null);
