@@ -236,8 +236,22 @@ export default function App() {
   }, [parcels]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE.memory, JSON.stringify(memory));
-  }, [memory]);
+  let active = true;
+
+  async function restoreMemory() {
+    const restoredMemory = await restoreAiMemory();
+
+    if (active && restoredMemory.length) {
+      setMemory(restoredMemory);
+    }
+  }
+
+  restoreMemory();
+
+  return () => {
+    active = false;
+  };
+}, []);
 
   const today = localDateKey();
   const todayParcels = parcels[today] || [];
