@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 import { createWorker } from 'tesseract.js';
 import { jsPDF } from 'jspdf';
 
@@ -162,6 +164,7 @@ export default function App() {
   async function recognizeImage(image) {
     setBusy(true);
     setOcrProgress('Preparando imagem…');
+    setOcrText('');
     setNotice({ text: 'Preparando a etiqueta para leitura. Na primeira vez, pode ser necessário estar conectado à internet para baixar o idioma português.', type: 'info' });
     let worker;
     try {
@@ -172,8 +175,16 @@ export default function App() {
           else if (message.status) setOcrProgress(message.status === 'loading language traineddata' ? 'Baixando idioma português…' : 'Iniciando OCR…');
         },
       });
-      const result = await worker.recognize(preparedImage);
-      applyLabelText(result.data.text || '');
+      let result = await worker.recognize(preparedImage);
+      let recognizedText = result.data.text || '';
+      if (recognizedText.trim().length < 24) {
+        setOcrProgress('Tentando uma segunda leitura da etiqueta…');
+        await worker.setParameters({ tessedit_pageseg_mode: '11' });
+        result = await worker.recognize(preparedImage);
+        const retryText = result.data.text || '';
+        if (retryText.trim().length > recognizedText.trim().length) recognizedText = retryText;
+      }
+      applyLabelText(recognizedText);
     } catch (error) {
       console.error('Falha no OCR:', error);
       setNotice({ text: 'Não foi possível processar a imagem. Verifique a conexão com a internet na primeira leitura, tente outra foto ou preencha os dados manualmente.', type: 'error' });
@@ -303,7 +314,7 @@ export default function App() {
     setResidents(current => current.filter(item => item.id !== resident.id));
   }
 
-  function exportPdf(day) {
+  async function exportPdf(day) {
     const doc = new jsPDF();
     const rows = parcels[day] || [];
     doc.setFontSize(16);
@@ -320,7 +331,27 @@ export default function App() {
       doc.text(lines, 14, y);
       y += lines.length * 6 + 5;
     });
-    doc.save(`portaria-encomendas-${day}.pdf`);
+
+    const filename = `portaria-encomendas-${day}.pdf`;
+    if (!Capacitor.isNativePlatform()) {
+      doc.save(filename);
+      return;
+    }
+    try {
+      const dataUri = doc.output('datauristring');
+      const base64 = dataUri.slice(dataUri.indexOf(',') + 1);
+      await Filesystem.writeFile({
+        path: `relatorio de encomendas/${filename}`,
+        data: base64,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+      window.alert(`PDF salvo automaticamente em Documentos/relatorio de encomendas/${filename} (armazenamento do aplicativo).`);
+    } catch (error) {
+      console.error('Falha ao salvar PDF no aparelho:', error);
+      doc.save(filename);
+      window.alert('Não foi possível salvar na pasta do aplicativo. O PDF foi baixado pelo método alternativo.');
+    }
   }
 
   function renderParcelCard(parcel) {
@@ -405,10 +436,10 @@ export default function App() {
           <div className="button-row"><button className="button small secondary" onClick={() => editResident(resident)}>Editar</button><button className="button small red" onClick={() => deleteResident(resident)}>Excluir</button></div>
         </article>) : <p className="empty">Nenhum morador cadastrado.</p>}</div>
       </section>}
-      {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">Exporte uma cópia dos registros de cada dia. As encomendas pendentes também ficam listadas na tela Portaria, mesmo em dias seguintes.</p>
-        {Object.keys(parcels).sort().reverse().length ? Object.keys(parcels).sort().reverse().map(day => <div className="report-row" key={day}><div><strong>{day}</strong><p className="muted">{(parcels[day] || []).length} encomenda(s)</p></div><button className="button small green" onClick={() => exportPdf(day)}>Baixar PDF</button></div>) : <p className="empty">Ainda não há relatórios.</p>}
+      {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">Os PDFs são salvos automaticamente no Android em Documentos/relatorio de encomendas. Na versão web, o arquivo é baixado pelo navegador.</p>
+        {reportDays.length ? reportDays.map(day => <div className="report-row" key={day}><div><strong>{day}</strong><p className="muted">{(parcels[day] || []).length} encomenda(s)</p></div><button className="button small green" onClick={() => exportPdf(day)}>Salvar PDF</button></div>) : <p className="empty">Ainda não há relatórios.</p>}
       </section>}
-      {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR em português. Na primeira leitura, conecte o celular à internet para baixar os dados do idioma; depois, revise o texto reconhecido e os campos sugeridos.</p>
+      {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR em português. Na primeira leitura, conecte o celular à internet para baixar os dados do idioma; confira o texto reconhecido e revise os campos sugeridos.</p>
         <h3 className="subheading">Transportadoras aprendidas</h3>
         {memory.length ? memory.slice(0, 20).map((item, index) => <div className="memory-row" key={`${item.keyword}-${index}`}><span>{item.keyword}</span><strong>{item.carrier}</strong></div>) : <p className="empty">Ainda não há sugestões aprendidas.</p>}
       </section>}
