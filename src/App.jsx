@@ -155,8 +155,8 @@ export default function App() {
     const matchedFields = ['resident', 'apartment', 'carrier', 'tracking'].filter(key => suggested[key]).length;
     setNotice({
       text: matchedFields
-        ? `Texto reconhecido. ${matchedFields} campo(s) sugerido(s); revise os dados e veja o texto lido abaixo.`
-        : 'O texto foi reconhecido, mas não encontrei campos automaticamente. Confira o texto lido abaixo e copie as informações para os campos.',
+        ? `Texto reconhecido. ${matchedFields} campo(s) sugerido(s); revise os dados e confira o texto reconhecido.`
+        : 'O texto foi reconhecido, mas não encontrei campos automaticamente. Confira o texto e copie as informações para os campos.',
       type: matchedFields ? 'success' : 'info',
     });
   }
@@ -346,11 +346,11 @@ export default function App() {
         directory: Directory.Documents,
         recursive: true,
       });
-      window.alert(`PDF salvo automaticamente em Documentos/relatorio de encomendas/${filename} (armazenamento do aplicativo).`);
+      window.alert(`PDF salvo automaticamente na pasta de documentos do app: relatorio de encomendas/${filename}.`);
     } catch (error) {
       console.error('Falha ao salvar PDF no aparelho:', error);
       doc.save(filename);
-      window.alert('Não foi possível salvar na pasta do aplicativo. O PDF foi baixado pelo método alternativo.');
+      window.alert('Não foi possível salvar na pasta do app. O PDF foi baixado pelo método alternativo.');
     }
   }
 
@@ -383,9 +383,9 @@ export default function App() {
           <p className="help-text">Fotografe a etiqueta ou preencha os dados. OCR é uma sugestão: confira o texto e revise os campos antes de registrar.</p>
           <div className="capture-grid">
             <button type="button" className="button camera-button" disabled={busy} onClick={takePhoto}>{busy ? 'Lendo etiqueta…' : 'Abrir câmera'}</button>
-            <label className="button gallery-button">Escolher foto<input type="file" accept="image/*" onChange={chooseImage} disabled={busy} /></label>
+            <label className={`button gallery-button${busy ? ' disabled' : ''}`}>Escolher foto<input type="file" accept="image/*" onChange={chooseImage} disabled={busy} /></label>
           </div>
-          <div className={`notice ${notice.type}`} role="status">{busy && ocrProgress ? `${notice.text} ${ocrProgress}` : notice.text}</div>
+          <div className={`notice ${notice.type}`} role="status" aria-live="polite">{busy && ocrProgress ? `${notice.text} ${ocrProgress}` : notice.text}</div>
           {!!ocrText && <div className="ocr-result">
             <label className="field-label" htmlFor="ocr-text">Texto reconhecido na etiqueta (você pode corrigir e aplicar novamente)</label>
             <textarea id="ocr-text" className="ocr-textarea" value={ocrText} onChange={event => setOcrText(event.target.value)} rows={6} />
@@ -405,7 +405,7 @@ export default function App() {
           </form>
         </div>
         <div className="panel"><div className="section-heading"><h2>Encomendas de hoje</h2><span className="count-pill">{todayParcels.length}</span></div>
-          <input className="search-input" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por morador, apto ou transportadora" />
+          <input className="search-input" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por morador, apto ou transportadora" aria-label="Buscar encomendas por morador, apartamento, transportadora ou data" />
           {filteredParcels.length ? filteredParcels.map(parcel => renderParcelCard({ ...parcel, day: today })) : <p className="empty">Nenhuma encomenda encontrada hoje.</p>}
         </div>
         <div className="panel"><div className="section-heading"><h2>Encomendas pendentes</h2><span className="count-pill">{pendingParcels.length}</span></div>
@@ -415,11 +415,11 @@ export default function App() {
       </section>}
       {tab === 'residents' && <section>
         <div className="panel"><h2>{editingResidentId ? 'Editar morador' : 'Cadastrar morador'}</h2><form onSubmit={saveResident}>
-          <label className="field-label">Nome<input required value={residentForm.name} onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))} /></label>
+          <label className="field-label">Nome<input required value={residentForm.name} onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))} autoComplete="name" /></label>
           <label className="field-label">Apartamento / bloco<input required value={residentForm.apartment} onChange={event => setResidentForm(current => ({ ...current, apartment: event.target.value }))} /></label>
-          <label className="field-label">Telefone (opcional)<input type="tel" value={residentForm.phone} onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))} /></label>
+          <label className="field-label">Telefone (opcional)<input type="tel" value={residentForm.phone} onChange={event => setResidentForm(current => ({ ...current, phone: event.target.value }))} autoComplete="tel" /></label>
           <label className="field-label">Foto do morador<input type="file" accept="image/*" onChange={chooseResidentPhoto} /></label>
-          {residentForm.photo && <img src={residentForm.photo} alt="Foto do morador" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 12, marginTop: 10 }} />}
+          {residentForm.photo && <img src={residentForm.photo} alt="Prévia da foto do morador" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 12, marginTop: 10 }} />}
           <div className="section-heading" style={{ marginTop: 18 }}><h3 style={{ margin: 0 }}>Parentes / membros do apartamento</h3><button type="button" className="button small secondary" onClick={addFamilyMember}>+ Adicionar</button></div>
           {(residentForm.family || []).map(person => <div className="list-card" key={person.id}>
             <label className="field-label">Nome<input value={person.name || ''} onChange={event => updateFamilyMember(person.id, 'name', event.target.value)} /></label>
@@ -436,7 +436,7 @@ export default function App() {
           <div className="button-row"><button className="button small secondary" onClick={() => editResident(resident)}>Editar</button><button className="button small red" onClick={() => deleteResident(resident)}>Excluir</button></div>
         </article>) : <p className="empty">Nenhum morador cadastrado.</p>}</div>
       </section>}
-      {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">Os PDFs são salvos automaticamente no Android em Documentos/relatorio de encomendas. Na versão web, o arquivo é baixado pelo navegador.</p>
+      {tab === 'reports' && <section className="panel"><h2>Relatórios PDF</h2><p className="help-text">No Android, os PDFs são gravados no armazenamento de documentos do próprio app, na pasta “relatorio de encomendas”. Essa pasta pode não aparecer como pasta pública no gerenciador de arquivos. No navegador, o PDF é baixado normalmente.</p>
         {reportDays.length ? reportDays.map(day => <div className="report-row" key={day}><div><strong>{day}</strong><p className="muted">{(parcels[day] || []).length} encomenda(s)</p></div><button className="button small green" onClick={() => exportPdf(day)}>Salvar PDF</button></div>) : <p className="empty">Ainda não há relatórios.</p>}
       </section>}
       {tab === 'settings' && <section className="panel"><h2>Leitura inteligente</h2><p className="help-text">O app usa OCR em português. Na primeira leitura, conecte o celular à internet para baixar os dados do idioma; confira o texto reconhecido e revise os campos sugeridos.</p>
