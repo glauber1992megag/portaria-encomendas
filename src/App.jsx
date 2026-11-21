@@ -1,4 +1,3 @@
-import { getAiBackup, saveAiBackup } from './aiBackup.js';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -18,19 +17,28 @@ const STORAGE = {
 };
 
 const FIELD_LIST = [
-  { id: 'resident', label: 'Nome do morador' },
-  { id: 'apartment', label: 'Apartamento / bloco' },
+  { id: 'apartment', label: 'Apartamento / bloco (AP, apt, apto)' },
+  { id: 'resident', label: 'Destinatário (Morador)' },
+  { id: 'barcode', label: 'Código de barras' },
+  { id: 'tracking', label: 'Código de rastreio' },
+  { id: 'orderNumber', label: 'Número do pedido' },
+  { id: 'invoice', label: 'Nota Fiscal (NF / NF-e)' },
   { id: 'carrier', label: 'Transportadora' },
-  { id: 'tracking', label: 'Código / observações' },
 ];
 
 const CARRIER_HINTS = [
   ['MERCADO LIVRE', 'Mercado Livre'],
   ['MERCADOLIVRE', 'Mercado Livre'],
+  ['MERCADO ENVIOS', 'Mercado Livre'],
   ['AMAZON', 'Amazon'],
   ['SHOPEE', 'Shopee'],
   ['CORREIOS', 'Correios'],
+  ['SEDEX', 'Correios'],
+  ['PAC', 'Correios'],
   ['MAGALU', 'Magalu Entregas'],
+  ['JADLOG', 'Jadlog'],
+  ['LOGGI', 'Loggi'],
+  ['TOTAL EXPRESS', 'Total Express'],
 ];
 
 function load(key, fallback) {
@@ -47,7 +55,16 @@ function localDateKey(date = new Date()) {
 }
 
 function emptyForm() {
-  return { resident: '', apartment: '', carrier: '', tracking: '', extraDetails: [] };
+  return {
+    apartment: '',
+    resident: '',
+    barcode: '',
+    tracking: '',
+    orderNumber: '',
+    invoice: '',
+    carrier: '',
+    extraDetails: [],
+  };
 }
 
 function emptyResidentForm() {
@@ -55,7 +72,10 @@ function emptyResidentForm() {
 }
 
 function normalize(value = '') {
-  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleUpperCase('pt-BR');
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleUpperCase('pt-BR');
 }
 
 function newId() {
@@ -66,6 +86,44 @@ function cleanupExtraDetails(details = []) {
   return (Array.isArray(details) ? details : [])
     .filter(item => item && (item.label?.trim() || item.value?.trim()))
     .map(item => ({ ...item, label: item.label || '', value: item.value || '' }));
+}
+
+function cleanLine(line = '') {
+  return String(line).replace(/\s+/g, ' ').trim();
+}
+
+async function detectBarcodeFromImage(imageSource) {
+  let objectUrl = '';
+  try {
+    if (!('BarcodeDetector' in window)) return '';
+    const detector = new window.BarcodeDetector({
+      formats: ['code_128', 'code_39', 'ean_13', 'itf', 'qr_code', 'codabar'],
+    });
+
+    const img = new Image();
+    if (typeof imageSource === 'string') {
+      img.src = imageSource;
+    } else {
+      objectUrl = URL.createObjectURL(imageSource);
+      img.src = objectUrl;
+    }
+
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+
+    const barcodes = await detector.detect(img);
+    if (barcodes && barcodes.length > 0) {
+      barcodes.sort((a, b) => (b.rawValue?.length || 0) - (a.rawValue?.length || 0));
+      return barcodes[0].rawValue || '';
+    }
+  } catch {
+    return '';
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+  return '';
 }
 
 async function prepImageForOcr(source) {
@@ -81,7 +139,7 @@ async function prepImageForOcr(source) {
     });
 
     const maxSide = Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height);
-    const scale = Math.min(2, 1800 / maxSide);
+    const scale = Math.min(2, 2000 / maxSide);
 
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
@@ -92,115 +150,136 @@ async function prepImageForOcr(source) {
 
     context.fillStyle = '#fff';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    context.filter = 'grayscale(1) contrast(1.45)';
+    context.filter = 'grayscale(1) contrast(1.55)';
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-    return canvas.toDataURL('image/jpeg', 0.92);
+    return canvas.toDataURL('image/jpeg', 0.94);
   } finally {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
   }
 }
 
-function cleanLine(line = '') {
-  return String(line).replace(/\s+/g, ' ').trim();
-}
-
-function extractBestResident(text) {
+function parseOcrTextSmart(text, memory = [], residents = [], detectedBarcode = '') {
+  const normalizedFull = normalize(text);
   const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
-  const explicit = ['DESTINATARIO', 'DESTINATÁRIO', 'RECEBEDOR', 'CLIENTE', 'DESTINO'];
 
-  const findByLabel = labels => {
+  const result = {
+    apartment: '',
+    resident: '',
+    barcode: detectedBarcode || '',
+    tracking: '',
+    orderNumber: '',
+    invoice: '',
+    carrier: '',
+  };
+
+  for (const rule of memory) {
+    if (!rule.trigger || !rule.field || !rule.targetValue) continue;
+    if (normalizedFull.includes(normalize(rule.trigger))) {
+      if (!result[rule.field]) {
+        result[rule.field] = rule.targetValue;
+      }
+    }
+  }
+
+  if (!result.resident) {
+    for (const res of residents) {
+      const resNorm = normalize(res.name);
+      if (resNorm.length >= 4 && normalizedFull.includes(resNorm)) {
+        result.resident = res.name;
+        if (!result.apartment && res.apartment) result.apartment = res.apartment;
+        break;
+      }
+      const fam = (res.family || []).find(
+        f => f.name && normalize(f.name).length >= 4 && normalizedFull.includes(normalize(f.name))
+      );
+      if (fam) {
+        result.resident = `${fam.name} (${res.name})`;
+        if (!result.apartment && res.apartment) result.apartment = res.apartment;
+        break;
+      }
+    }
+  }
+
+  if (!result.apartment) {
+    const aptMatch = /(?:APTO|APT|APARTAMENTO|AP|UNIDADE)\s*\.?\s*[:#-]?\s*([0-9]+[A-Z0-9\-\/]*)/i.exec(normalizedFull);
+    if (aptMatch) {
+      const blockMatch = /(?:BLOCO|BL|TORRE)\s*\.?\s*[:#-]?\s*([A-Z0-9]+)/i.exec(normalizedFull);
+      result.apartment = blockMatch ? `Apto ${aptMatch[1]} - Bloco ${blockMatch[1]}` : `Apto ${aptMatch[1]}`;
+    }
+  }
+
+  if (!result.invoice) {
+    const nfMatch = /(?:NF-E|NFE|NF|NOTA\s*FISCAL|DANFE)\s*(?:N[Oº°]?\.?)?\s*[:#-]?\s*([0-9\.\-]{3,20})/i.exec(normalizedFull);
+    if (nfMatch) {
+      result.invoice = nfMatch[1].replace(/\.$/, '');
+    }
+  }
+
+  if (!result.orderNumber) {
+    const orderMatch = /(?:PEDIDO|ORDER|ID\s*PEDIDO|COMPRA)\s*(?:N[Oº°]?\.?)?\s*[:#-]?\s*([A-Z0-9\-]{5,25})/i.exec(normalizedFull);
+    if (orderMatch) {
+      result.orderNumber = orderMatch[1];
+    }
+  }
+
+  if (!result.tracking) {
+    const trackingLabelMatch = /(?:RASTREAMENTO|RASTREIO|TRACKING|OBJETO|CODIGO\s*DO\s*OBJETO)\s*[:#-]?\s*([A-Z0-9\-]{8,25})/i.exec(normalizedFull);
+    if (trackingLabelMatch) {
+      result.tracking = trackingLabelMatch[1];
+    } else {
+      const correiosMatch = /\b[A-Z]{2}\d{9}[A-Z]{2}\b/.exec(normalizedFull);
+      const genericTrackMatch = /\b(?:TBR|BR|ML|SP|AMZ)[0-9A-Z]{7,20}\b/.exec(normalizedFull);
+      if (correiosMatch) result.tracking = correiosMatch[0];
+      else if (genericTrackMatch) result.tracking = genericTrackMatch[0];
+      else if (detectedBarcode) result.tracking = detectedBarcode;
+    }
+  }
+
+  if (!result.barcode) {
+    const longDigits = normalizedFull.match(/\b\d{12,44}\b/);
+    if (longDigits) result.barcode = longDigits[0];
+  }
+
+  if (!result.carrier) {
+    const carrier = CARRIER_HINTS.find(([needle]) => normalizedFull.includes(needle));
+    if (carrier) result.carrier = carrier[1];
+  }
+
+  if (!result.resident) {
+    const explicit = ['DESTINATARIO', 'RECEBEDOR', 'CLIENTE', 'PARA:', 'NOME:'];
     for (let i = 0; i < lines.length; i += 1) {
-      const line = normalize(lines[i]);
-      const found = labels.find(label => line.includes(normalize(label)));
+      const lineNorm = normalize(lines[i]);
+      const found = explicit.find(label => lineNorm.includes(label));
       if (!found) continue;
 
-      const index = line.indexOf(normalize(found));
-      const tail = lines[i].slice(index + found.length).replace(/^\s*[:#-]?\s*/, '').trim();
-      if (tail && tail.length > 2) return tail;
-      if (lines[i + 1]) return lines[i + 1];
-    }
-    return '';
-  };
-
-  const candidate = findByLabel(explicit);
-  if (candidate) return candidate;
-
-  const addressBlock = lines.findIndex(line => /\b(RUA|AV\.?|AVENIDA|ALAMEDA|TRAVESSA)\b/i.test(line));
-  if (addressBlock > 0) {
-    const nearby = lines
-      .slice(Math.max(0, addressBlock - 3), addressBlock)
-      .reverse()
-      .find(line =>
-        /[A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ]{2,}/.test(line) &&
-        !/\b(AMAZON|BRASIL|FRETE|GRATIS|RAPIDO|PEDIDO|ENTREGA)\b/i.test(normalize(line))
-      );
-
-    if (nearby) return nearby.replace(/^[^A-Za-zÀ-ÿ]+|[^A-Za-zÀ-ÿ.' -]+$/g, '').trim();
-  }
-
-  return '';
-}
-
-function extractBestApartment(text) {
-  const lineText = normalize(text);
-  const labelMatch = /(?:APTO|APT|APARTAMENTO)\s*[:#-]?\s*([0-9A-Z]+)/i.exec(lineText);
-  if (labelMatch) return `Apto ${labelMatch[1]}`;
-
-  const fallbackMatch = /\b([0-9]{3,4})\b/.exec(text);
-  if (fallbackMatch) return `Apto ${fallbackMatch[1]}`;
-
-  return '';
-}
-
-function extractBestCarrier(text) {
-  const normalized = normalize(text);
-  const carrier = CARRIER_HINTS.find(([needle]) => normalized.includes(needle));
-  if (carrier) return carrier[1];
-
-  const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = normalize(lines[i]);
-    if (line.includes('TRANSPORTADORA')) {
-      const tail = lines[i].replace(/.*TRANSPORTADORA/i, '').replace(/^\s*[:#-]?\s*/, '').trim();
-      return tail || '';
+      const idx = lineNorm.indexOf(found);
+      const tail = lines[i].slice(idx + found.length).replace(/^\s*[:#-]?\s*/, '').trim();
+      if (tail.length > 3 && !/\d{4,}/.test(tail)) {
+        result.resident = tail;
+        break;
+      }
+      if (lines[i + 1] && lines[i + 1].length > 3 && !/\d{4,}/.test(lines[i + 1])) {
+        result.resident = lines[i + 1];
+        break;
+      }
     }
   }
 
-  return '';
-}
-
-function extractBestTracking(text) {
-  const normalized = normalize(text);
-  const explicit = ['RASTREAMENTO', 'RASTREIO', 'TRACKING', 'CODIGO DO OBJETO', 'OBJETO'];
-
-  const lines = text.split(/\r?\n/).map(cleanLine).filter(Boolean);
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = normalize(lines[i]);
-    const found = explicit.find(label => line.includes(normalize(label)));
-    if (!found) continue;
-
-    const tail = lines[i].replace(new RegExp(found, 'ig'), '').replace(/^\s*[:#-]?\s*/, '').trim();
-    if (tail) return tail;
-  }
-
-  const match = /\b[A-Z]{2,5}\d{6,}[A-Z0-9]*\b/.exec(normalized);
-  if (match) return match[0];
-
-  return '';
-}
-
-function parseOcrText(text) {
-  const result = {
-    resident: extractBestResident(text),
-    apartment: extractBestApartment(text),
-    carrier: extractBestCarrier(text),
-    tracking: extractBestTracking(text),
-  };
-
-  if (!result.apartment && /\b([0-9]{3,4})\b/.test(text)) {
-    const found = text.match(/\b([0-9]{3,4})\b/);
-    if (found) result.apartment = `Apto ${found[1]}`;
+  if (!result.resident) {
+    const addressBlock = lines.findIndex(line => /\b(RUA|AV\.?|AVENIDA|ALAMEDA|TRAVESSA|ROD\.?)\b/i.test(line));
+    if (addressBlock > 0) {
+      const nearby = lines
+        .slice(Math.max(0, addressBlock - 3), addressBlock)
+        .reverse()
+        .find(line =>
+          /[A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ]{2,}/.test(line) &&
+          !/\b(AMAZON|MERCADO|SHOPEE|CORREIOS|BRASIL|FRETE|PEDIDO|ENTREGA|DESTINATARIO|REMETENTE)\b/i.test(normalize(line))
+        );
+      if (nearby) {
+        result.resident = nearby.replace(/^[^A-Za-zÀ-ÿ]+|[^A-Za-zÀ-ÿ.' -]+$/g, '').trim();
+      }
+    }
   }
 
   return result;
@@ -210,16 +289,18 @@ export default function App() {
   const [residents, setResidents] = useState(() => load(STORAGE.residents, []));
   const [parcels, setParcels] = useState(() => load(STORAGE.parcels, {}));
   const [memory, setMemory] = useState(() => {
-  const localMemory = load(STORAGE.memory, []);
-  return localMemory.length ? localMemory : getLocalAiMemory();
-});
+    const localMemory = load(STORAGE.memory, []);
+    return localMemory.length ? localMemory : getLocalAiMemory();
+  });
+
   const [form, setForm] = useState(emptyForm);
+  const [ocrSuggestedForm, setOcrSuggestedForm] = useState(null);
   const [residentForm, setResidentForm] = useState(emptyResidentForm);
   const [editingResidentId, setEditingResidentId] = useState(null);
   const [editingParcel, setEditingParcel] = useState(null);
   const [tab, setTab] = useState('desk');
   const [notice, setNotice] = useState({
-    text: 'Registre a encomenda manualmente ou leia a etiqueta pela câmera.',
+    text: 'Fotografe a etiqueta ou preencha os dados manualmente.',
     type: 'info',
   });
   const [busy, setBusy] = useState(false);
@@ -236,30 +317,24 @@ export default function App() {
   }, [parcels]);
 
   useEffect(() => {
-  let active = true;
-
-  async function restoreMemory() {
-    const restoredMemory = await restoreAiMemory();
-
-    if (active && restoredMemory.length) {
-      setMemory(restoredMemory);
+    let active = true;
+    async function restoreMemory() {
+      const restoredMemory = await restoreAiMemory();
+      if (active && restoredMemory.length) {
+        setMemory(restoredMemory);
+      }
     }
-  }
+    restoreMemory();
+    return () => { active = false; };
+  }, []);
 
-  restoreMemory();
+  useEffect(() => {
+    localStorage.setItem(STORAGE.memory, JSON.stringify(memory));
+    saveAiMemory(memory).catch(error => {
+      console.error('Falha ao salvar o backup da IA:', error);
+    });
+  }, [memory]);
 
-  return () => {
-    active = false;
-  };
-}, []);
-
-useEffect(() => {
-  localStorage.setItem(STORAGE.memory, JSON.stringify(memory));
-
-  saveAiMemory(memory).catch(error => {
-    console.error('Falha ao salvar o backup da IA:', error);
-  });
-}, [memory]);
   const today = localDateKey();
   const todayParcels = parcels[today] || [];
 
@@ -276,22 +351,12 @@ useEffect(() => {
 
   function parcelSearchText(item) {
     const data = item?.data || {};
-    return Object.entries(data)
-      .flatMap(([_, value]) => {
+    return Object.values(data)
+      .flatMap(value => {
         if (Array.isArray(value)) {
-          return value.flatMap(entry => {
-            if (typeof entry === 'object' && entry !== null) {
-              return [`${entry.label || ''}`, `${entry.value || ''}`];
-            }
-            return [String(entry)];
-          });
+          return value.map(entry => `${entry?.label || ''} ${entry?.value || ''}`);
         }
-
-        if (value && typeof value === 'object') {
-          return [JSON.stringify(value)];
-        }
-
-        return [String(value)];
+        return [String(value || '')];
       })
       .join(' ');
   }
@@ -299,14 +364,12 @@ useEffect(() => {
   const filteredParcels = useMemo(() => {
     const term = normalize(query.trim());
     if (!term) return todayParcels;
-
     return todayParcels.filter(item => normalize(parcelSearchText(item)).includes(term));
   }, [todayParcels, query]);
 
   const filteredPending = useMemo(() => {
     const term = normalize(query.trim());
     if (!term) return pendingParcels;
-
     return pendingParcels.filter(item => normalize(parcelSearchText(item) + ` ${item.day}`).includes(term));
   }, [pendingParcels, query]);
 
@@ -314,80 +377,82 @@ useEffect(() => {
     setForm(current => ({ ...current, [key]: value }));
   }
 
-  function applyLabelText(text) {
+  function applyLabelText(text, detectedBarcode = '') {
     setOcrText(text);
 
-    if (!text.trim()) {
+    if (!text.trim() && !detectedBarcode) {
       setNotice({
-        text: 'A imagem foi processada, mas nenhum texto foi reconhecido. Tente aproximar e iluminar melhor a etiqueta.',
+        text: 'Nenhum texto ou código de barras foi reconhecido. Tente aproximar e iluminar melhor a etiqueta.',
         type: 'error',
       });
       return;
     }
 
-    const parsed = parseOcrText(text);
+    const parsed = parseOcrTextSmart(text, memory, residents, detectedBarcode);
+    setOcrSuggestedForm(parsed);
 
     setForm(current => ({
       ...current,
-      resident: parsed.resident || current.resident,
       apartment: parsed.apartment || current.apartment,
-      carrier: parsed.carrier || current.carrier,
+      resident: parsed.resident || current.resident,
+      barcode: parsed.barcode || current.barcode,
       tracking: parsed.tracking || current.tracking,
+      orderNumber: parsed.orderNumber || current.orderNumber,
+      invoice: parsed.invoice || current.invoice,
+      carrier: parsed.carrier || current.carrier,
     }));
 
     const matched = Object.values(parsed).filter(Boolean).length;
     setNotice({
       text: matched
-        ? `Texto reconhecido. ${matched} campo(s) sugerido(s); revise os dados e confirme antes de salvar.`
-        : 'O texto foi reconhecido, mas não encontrei campos automaticamente. Confira o texto e complete manualmente.',
+        ? `Leitura concluída! ${matched} campo(s) preenchido(s). Se você corrigir algum campo abaixo, a IA aprenderá para a próxima vez.`
+        : 'Texto extraído, mas os campos não foram identificados automaticamente. Preencha abaixo para ensinar a IA.',
       type: matched ? 'success' : 'info',
     });
   }
 
   async function recognizeImage(image) {
     setBusy(true);
-    setOcrProgress('Preparando imagem…');
+    setOcrProgress('Lendo código de barras…');
     setOcrText('');
     setNotice({
-      text: 'Preparando a etiqueta para leitura. Na primeira leitura, conecte o celular à internet para baixar o idioma português.',
+      text: 'Analisando etiqueta (código de barras + texto)…',
       type: 'info',
     });
 
     let worker;
 
     try {
+      const detectedBarcode = await detectBarcodeFromImage(image);
+      setOcrProgress('Preparando imagem para OCR…');
       const preparedImage = await prepImageForOcr(image);
+
       worker = await createWorker('por', 1, {
         logger: message => {
           if (message.status === 'recognizing text') {
             setOcrProgress(`Lendo texto: ${Math.round((message.progress || 0) * 100)}%`);
           } else if (message.status === 'loading language traineddata') {
             setOcrProgress('Baixando idioma português…');
-          } else if (message.status) {
-            setOcrProgress('Iniciando OCR…');
           }
         },
       });
 
       const result = await worker.recognize(preparedImage);
-      const recognizedText = result.data.text || '';
+      let recognizedText = result.data.text || '';
 
-      if (recognizedText.trim().length < 24) {
+      if (recognizedText.trim().length < 25) {
         await worker.setParameters({ tessedit_pageseg_mode: '11' });
         const retry = await worker.recognize(preparedImage);
-
         if ((retry.data.text || '').trim().length > recognizedText.trim().length) {
-          applyLabelText(retry.data.text || recognizedText);
-        } else {
-          applyLabelText(recognizedText);
+          recognizedText = retry.data.text || recognizedText;
         }
-      } else {
-        applyLabelText(recognizedText);
       }
+
+      applyLabelText(recognizedText, detectedBarcode);
     } catch (error) {
       console.error('Falha no OCR:', error);
       setNotice({
-        text: 'Não foi possível processar a imagem. Verifique a internet na primeira leitura, tente outra foto ou preencha manualmente.',
+        text: 'Erro ao ler a imagem. Tente novamente com boa iluminação ou preencha manualmente.',
         type: 'error',
       });
     } finally {
@@ -410,9 +475,9 @@ useEffect(() => {
       if (photo.dataUrl) {
         await recognizeImage(photo.dataUrl);
       }
-    } catch (error) {
+    } catch {
       setNotice({
-        text: 'Câmera cancelada ou sem permissão. Você também pode escolher uma foto da galeria.',
+        text: 'Câmera cancelada ou sem permissão. Você pode escolher uma foto da galeria.',
         type: 'error',
       });
     }
@@ -426,16 +491,87 @@ useEffect(() => {
     }
   }
 
+  function learnFromManualCorrections(rawOcrText, suggested, finalForm) {
+    if (!rawOcrText || !rawOcrText.trim()) return;
+
+    const newRules = [];
+    const lines = rawOcrText.split(/\r?\n/).map(cleanLine).filter(Boolean);
+
+    if (finalForm.resident.trim() && suggested?.resident && normalize(finalForm.resident) !== normalize(suggested.resident)) {
+      if (suggested.resident.length >= 4) {
+        newRules.push({
+          trigger: suggested.resident,
+          field: 'resident',
+          targetValue: finalForm.resident.trim(),
+          learnedAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    if (finalForm.resident.trim() && !suggested?.resident) {
+      const firstWord = normalize(finalForm.resident).split(' ')[0];
+      if (firstWord && firstWord.length >= 4) {
+        const matchingLine = lines.find(l => normalize(l).includes(firstWord));
+        if (matchingLine && matchingLine.length >= 4 && matchingLine.length <= 45) {
+          newRules.push({
+            trigger: matchingLine,
+            field: 'resident',
+            targetValue: finalForm.resident.trim(),
+            learnedAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    if (finalForm.apartment.trim() && suggested?.apartment && normalize(finalForm.apartment) !== normalize(suggested.apartment)) {
+      if (suggested.apartment.length >= 3) {
+        newRules.push({
+          trigger: suggested.apartment,
+          field: 'apartment',
+          targetValue: finalForm.apartment.trim(),
+          learnedAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    if (finalForm.carrier.trim() && normalize(finalForm.carrier) !== normalize(suggested?.carrier || '')) {
+      const candidateWord = normalize(rawOcrText)
+        .split(/\s+/)
+        .map(w => w.replace(/[^A-Z0-9]/g, ''))
+        .find(w => w.length >= 5 && !['DESTINATARIO', 'REMETENTE', 'ENDERECO', 'BAIRRO', 'CIDADE', 'BRASIL'].includes(w));
+
+      if (candidateWord) {
+        newRules.push({
+          trigger: candidateWord,
+          field: 'carrier',
+          targetValue: finalForm.carrier.trim(),
+          learnedAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    if (newRules.length > 0) {
+      setMemory(current => {
+        const filtered = current.filter(
+          existing => !newRules.some(nr => normalize(nr.trigger) === normalize(existing.trigger) && nr.field === existing.field)
+        );
+        return [...newRules, ...filtered].slice(0, 250);
+      });
+    }
+  }
+
   function saveParcel(event) {
     event.preventDefault();
 
     if (!form.resident.trim() && !form.apartment.trim()) {
       setNotice({
-        text: 'Informe pelo menos o nome do morador ou o apartamento.',
+        text: 'Informe pelo menos o destinatário ou o apartamento.',
         type: 'error',
       });
       return;
     }
+
+    learnFromManualCorrections(ocrText, ocrSuggestedForm, form);
 
     const cleanedExtraDetails = cleanupExtraDetails(form.extraDetails);
 
@@ -463,21 +599,14 @@ useEffect(() => {
       return next;
     });
 
-    if (ocrText && form.carrier.trim()) {
-      const keyword = normalize(ocrText)
-        .split(/\s+/)
-        .map(word => word.replace(/[^A-Z0-9]/g, ''))
-        .find(word => word.length >= 5);
-
-      if (keyword && !memory.some(item => item.keyword === keyword && item.carrier === form.carrier.trim())) {
-        setMemory(current => [{ keyword, carrier: form.carrier.trim() }, ...current].slice(0, 100));
-      }
-    }
-
     setEditingParcel(null);
+    setOcrSuggestedForm(null);
     setForm(emptyForm());
     setOcrText('');
-    setNotice({ text: 'Encomenda registrada neste celular.', type: 'success' });
+    setNotice({
+      text: 'Encomenda registrada e padrões de correção salvos na memória da IA.',
+      type: 'success',
+    });
   }
 
   function markPickedUp(parcel) {
@@ -512,15 +641,6 @@ useEffect(() => {
     setResidentForm(current => ({
       ...current,
       family: [...(current.family || []), { id: newId(), name: '', relation: '' }],
-    }));
-  }
-
-  function updateFamilyMember(id, key, value) {
-    setResidentForm(current => ({
-      ...current,
-      family: (current.family || []).map(person =>
-        person.id === id ? { ...person, [key]: value } : person
-      ),
     }));
   }
 
@@ -653,11 +773,9 @@ useEffect(() => {
         directory: Directory.Documents,
         recursive: true,
       });
-      window.alert(`PDF salvo na pasta de documentos do app: relatorio de encomendas/${filename}.`);
-    } catch (error) {
-      console.error('Falha ao salvar PDF no aparelho:', error);
+      window.alert(`PDF salvo em Documentos/relatorio de encomendas/${filename}.`);
+    } catch {
       doc.save(filename);
-      window.alert('Não foi possível salvar na pasta do app. O PDF foi baixado pelo método alternativo.');
     }
   }
 
@@ -674,12 +792,16 @@ useEffect(() => {
           <span className="muted">Recebido: {received}</span>
         </div>
 
-        <h3>{parcel.data.resident || 'Morador não informado'}</h3>
-        <p>
-          {parcel.data.apartment || 'Apartamento não informado'}
-          {parcel.data.carrier ? ` · ${parcel.data.carrier}` : ''}
-        </p>
-        {parcel.data.tracking && <p className="muted">{parcel.data.tracking}</p>}
+        <h3>
+          {parcel.data.apartment ? `${parcel.data.apartment} — ` : ''}
+          {parcel.data.resident || 'Destinatário não informado'}
+        </h3>
+
+        {parcel.data.carrier && <p>Transportadora: {parcel.data.carrier}</p>}
+        {parcel.data.tracking && <p className="muted">Rastreio: {parcel.data.tracking}</p>}
+        {parcel.data.barcode && <p className="muted">Cód. Barras: {parcel.data.barcode}</p>}
+        {parcel.data.orderNumber && <p className="muted">Pedido: {parcel.data.orderNumber}</p>}
+        {parcel.data.invoice && <p className="muted">NF: {parcel.data.invoice}</p>}
 
         {extraDetails
           .filter(item => item && (item.label || item.value))
@@ -762,7 +884,7 @@ useEffect(() => {
             <div className="panel">
               <h2>{editingParcel ? 'Editar encomenda' : 'Receber encomenda'}</h2>
               <p className="help-text">
-                Fotografe a etiqueta ou preencha os dados. O OCR é uma sugestão: confirme antes de salvar.
+                Fotografe a etiqueta. Se corrigir algum campo sugerido, o app aprende automaticamente.
               </p>
 
               <div className="capture-grid">
@@ -775,7 +897,7 @@ useEffect(() => {
                   {busy ? 'Lendo etiqueta…' : 'Abrir câmera'}
                 </button>
 
-                <label className="gallery-button">
+                <label className="gallery-button button">
                   <span>Escolher foto</span>
                   <input type="file" accept="image/*" onChange={chooseImage} />
                 </label>
@@ -787,9 +909,10 @@ useEffect(() => {
 
               {!!ocrText && (
                 <div className="ocr-result">
-                  <label className="field-label" htmlFor="ocr-text">Texto reconhecido</label>
+                  <label className="field-label" htmlFor="ocr-text">Texto bruto lido da etiqueta</label>
                   <textarea
                     id="ocr-text"
+                    className="ocr-textarea"
                     value={ocrText}
                     onChange={event => setOcrText(event.target.value)}
                   />
@@ -803,7 +926,7 @@ useEffect(() => {
                     <input
                       value={form[field.id] || ''}
                       onChange={event => updateField(field.id, event.target.value)}
-                      placeholder="Confira e complete os dados"
+                      placeholder="Confira ou complete os dados"
                     />
                   </label>
                 ))}
@@ -815,8 +938,9 @@ useEffect(() => {
                 {(form.extraDetails || []).map((detail, index) => (
                   <div key={detail.id || index} className="extra-detail-row">
                     <label className="field-label">
-                      Detalhe
+                      Campo
                       <input
+                        placeholder="Ex: Bloco, Obs..."
                         value={detail.label || ''}
                         onChange={event => {
                           const next = [...(form.extraDetails || [])];
@@ -829,6 +953,7 @@ useEffect(() => {
                     <label className="field-label">
                       Valor
                       <input
+                        placeholder="Informação"
                         value={detail.value || ''}
                         onChange={event => {
                           const next = [...(form.extraDetails || [])];
@@ -837,6 +962,17 @@ useEffect(() => {
                         }}
                       />
                     </label>
+
+                    <button
+                      type="button"
+                      className="button small red"
+                      onClick={() => {
+                        const next = (form.extraDetails || []).filter((_, i) => i !== index);
+                        updateField('extraDetails', next);
+                      }}
+                    >
+                      Remover
+                    </button>
                   </div>
                 ))}
 
@@ -848,7 +984,7 @@ useEffect(() => {
                     extraDetails: [...(current.extraDetails || []), { id: newId(), label: '', value: '' }],
                   }))}
                 >
-                  + Adicionar detalhe
+                  + Adicionar informação extra
                 </button>
 
                 <button className="button green full" type="submit">
@@ -880,7 +1016,7 @@ useEffect(() => {
                 className="search-input"
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="Buscar por nome, apartamento ou código"
+                placeholder="Buscar por nome, apto, rastreio, pedido ou NF"
               />
 
               {filteredParcels.length ? (
@@ -895,8 +1031,6 @@ useEffect(() => {
                 <h2>Encomendas pendentes</h2>
                 <span className="count-pill">{pendingParcels.length}</span>
               </div>
-
-              <p className="help-text">Inclui encomendas ainda não retiradas.</p>
 
               {filteredPending.length ? (
                 filteredPending.map(parcel => renderParcelCard(parcel))
@@ -919,7 +1053,6 @@ useEffect(() => {
                     required
                     value={residentForm.name}
                     onChange={event => setResidentForm(current => ({ ...current, name: event.target.value }))}
-                    autoComplete="name"
                   />
                 </label>
 
@@ -1034,9 +1167,7 @@ useEffect(() => {
                     .filter(resident => {
                       const term = normalize(query.trim());
                       if (!term) return true;
-
-                      return normalize(`${resident.name} ${resident.apartment} ${resident.phone}`)
-                        .includes(term);
+                      return normalize(`${resident.name} ${resident.apartment} ${resident.phone}`).includes(term);
                     })
                     .sort((a, b) => {
                       const apartmentA = Number.parseInt((a.apartment || '').match(/\d+/)?.[0] || '9999', 10);
@@ -1093,7 +1224,7 @@ useEffect(() => {
           <section className="panel">
             <h2>Relatórios PDF</h2>
             <p className="help-text">
-              No Android, os arquivos ficam no armazenamento de documentos do app, na pasta “relatorio de encomendas”.
+              No Android, os arquivos ficam em Documentos/relatorio de encomendas.
             </p>
 
             {reportDays.length ? (
@@ -1117,10 +1248,23 @@ useEffect(() => {
 
         {tab === 'settings' && (
           <section className="panel">
-            <h2>Leitura inteligente</h2>
+            <h2>Memória da IA (Aprendizado OCR)</h2>
             <p className="help-text">
-              Na primeira leitura, conecte o celular à internet para baixar o idioma português do OCR.
+              Padrões aprendidos automaticamente quando você corrige uma leitura da câmera ({memory.length} regras salvas).
             </p>
+
+            {memory.length ? (
+              memory.map((item, idx) => (
+                <div className="memory-row" key={idx}>
+                  <span>
+                    Quando ler: <strong>{item.trigger || item.keyword}</strong>
+                  </span>
+                  <strong>→ {item.targetValue || item.carrier}</strong>
+                </div>
+              ))
+            ) : (
+              <p className="empty">Nenhuma correção aprendida ainda. Corrija uma etiqueta lida pela câmera para treinar.</p>
+            )}
           </section>
         )}
       </main>
@@ -1136,7 +1280,7 @@ useEffect(() => {
           <span>📄</span>Relatórios
         </button>
         <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
-          <span>⚙️</span>OCR
+          <span>🧠</span>IA ({memory.length})
         </button>
       </nav>
     </div>
